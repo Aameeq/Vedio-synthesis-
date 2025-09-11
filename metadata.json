@@ -1,5 +1,7 @@
 {
   "name": "AI World Steerable Video",
   "description": "An application that uses Google's Imagen and Veo models to generate an initial image from a text prompt and then creates steerable, continuous video clips based on user commands.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

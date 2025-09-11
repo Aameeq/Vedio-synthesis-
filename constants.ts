@@ -1,4 +1,3 @@
-
 import { CameraAction } from './types';
 
 export const VEO_PROMPT_TEMPLATE = (action: string) => 
@@ -27,3 +26,11 @@ export const LOADING_MESSAGES = [
   "Finalizing video stream...",
   "Almost there, preparing for playback...",
 ];
+
+export const PRESET_MOVEMENTS: { [key: string]: CameraAction[] } = {
+  'Orbit Left': [CameraAction.PAN_LEFT, CameraAction.PAN_LEFT, CameraAction.TILT_DOWN],
+  'Crane Up': [CameraAction.TILT_UP, CameraAction.ZOOM_OUT],
+  'Dolly Forward': [CameraAction.ZOOM_IN, CameraAction.ZOOM_IN],
+  'Establishing Shot': [CameraAction.PAN_RIGHT, CameraAction.TILT_DOWN, CameraAction.ZOOM_OUT],
+  'Push In & Pan Right': [CameraAction.ZOOM_IN, CameraAction.PAN_RIGHT],
+};
