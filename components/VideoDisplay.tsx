@@ -1,22 +1,39 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import { CameraAction } from '../types';
 
 interface VideoDisplayProps {
   videoUrl: string | null;
   audioUrl: string | null;
   frameUrl: string | null;
   onVideoEnd: (lastFrameDataUrl: string) => void;
+  optimisticAction: CameraAction | null;
 }
 
-const VideoDisplay: React.FC<VideoDisplayProps> = ({ videoUrl, audioUrl, frameUrl, onVideoEnd }) => {
+const VideoDisplay: React.FC<VideoDisplayProps> = ({ videoUrl, audioUrl, frameUrl, onVideoEnd, optimisticAction }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (optimisticAction) {
+      setIsAnimating(true);
+      const timer = setTimeout(() => {
+        setIsAnimating(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setIsAnimating(false);
+    }
+  }, [optimisticAction]);
+
 
   useEffect(() => {
     const videoElement = videoRef.current;
     const audioElement = audioRef.current;
 
     if (videoUrl && videoElement) {
+      setIsAnimating(false);
       const playPromise = videoElement.play();
       if (playPromise !== undefined) {
         playPromise.catch(error => {
@@ -58,22 +75,39 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ videoUrl, audioUrl, frameUr
     }
   };
 
+  const getAnimationClass = () => {
+    if (!isAnimating || !optimisticAction) return '';
+    switch (optimisticAction.type) {
+      case 'zoom':
+        return optimisticAction.direction === 'in' ? 'animate-zoom-in' : 'animate-zoom-out';
+      case 'pan':
+        return `animate-pan-${optimisticAction.direction}`;
+      case 'tilt':
+        return `animate-tilt-${optimisticAction.direction}`;
+      case 'roll':
+        return `animate-roll-${optimisticAction.direction}`;
+      default:
+        return '';
+    }
+  };
+
+
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative overflow-hidden">
       {videoUrl ? (
         <video
           ref={videoRef}
           key={videoUrl}
           src={videoUrl}
           onEnded={handleVideoEndInternal}
-          onTimeUpdate={handleTimeUpdate} // Fallback for browsers that don't fire onEnded consistently
+          onTimeUpdate={handleTimeUpdate}
           className="w-full h-full object-contain"
           muted
           autoPlay
           playsInline
         />
       ) : (
-        frameUrl && <img src={frameUrl} alt="Current frame" className="w-full h-full object-contain" />
+        frameUrl && <img src={frameUrl} alt="Current frame" className={`w-full h-full object-contain ${getAnimationClass()}`} />
       )}
       {audioUrl && (
           <audio ref={audioRef} src={audioUrl} loop />

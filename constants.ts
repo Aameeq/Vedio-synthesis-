@@ -16,15 +16,16 @@ export const KEY_MAP: { [key: string]: CameraAction } = {
 };
 
 export const LOADING_MESSAGES = [
-  "Initializing video synthesis...",
-  "Contacting generative model...",
-  "Generating initial frames...",
-  "Analyzing motion vectors...",
-  "Rendering video sequence...",
-  "Stitching frames together...",
-  "Applying cinematic color grade...",
-  "Finalizing video stream...",
-  "Almost there, preparing for playback...",
+  "Waking up the AI artists...",
+  "Brewing a cup of digital coffee...",
+  "Stretching the digital canvas...",
+  "Teaching the AI about cinematography...",
+  "Directing the virtual camera...",
+  "Rendering the first take...",
+  "The AI is checking its work...",
+  "Applying the final polish...",
+  "Rolling the credits...",
+  "Your video is premiering now!",
 ];
 
 export const PRESET_MOVEMENTS: { [key: string]: CameraAction[] } = {

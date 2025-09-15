@@ -44,6 +44,23 @@
       padding: 0.2em 0.4em;
       border-radius: 3px;
     }
+    @keyframes zoom-in { from { transform: scale(1); } to { transform: scale(1.2); } }
+    @keyframes zoom-out { from { transform: scale(1); } to { transform: scale(0.8); } }
+    @keyframes pan-left { from { transform: translateX(0); } to { transform: translateX(20%); } }
+    @keyframes pan-right { from { transform: translateX(0); } to { transform: translateX(-20%); } }
+    @keyframes tilt-up { from { transform: translateY(0); } to { transform: translateY(20%); } }
+    @keyframes tilt-down { from { transform: translateY(0); } to { transform: translateY(-20%); } }
+    @keyframes roll-left { from { transform: rotate(0); } to { transform: rotate(-5deg); } }
+    @keyframes roll-right { from { transform: rotate(0); } to { transform: rotate(5deg); } }
+
+    .animate-zoom-in { animation: zoom-in 1s ease-in-out; }
+    .animate-zoom-out { animation: zoom-out 1s ease-in-out; }
+    .animate-pan-left { animation: pan-left 1s ease-in-out; }
+    .animate-pan-right { animation: pan-right 1s ease-in-out; }
+    .animate-tilt-up { animation: tilt-up 1s ease-in-out; }
+    .animate-tilt-down { animation: tilt-down 1s ease-in-out; }
+    .animate-roll-left { animation: roll-left 1s ease-in-out; }
+    .animate-roll-right { animation: roll-right 1s ease-in-out; }
   </style>
 </head>
 <body>
