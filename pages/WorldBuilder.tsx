@@ -36,6 +36,7 @@ const WorldBuilder: React.FC = () => {
   const [isLibraryOpen, setIsLibraryOpen] = useState<boolean>(false);
   const [savedWorlds, setSavedWorlds] = useState<SavedWorld[]>([]);
   const [optimisticAction, setOptimisticAction] = useState<CameraAction | null>(null);
+  const [actionQueue, setActionQueue] = useState<CameraAction[]>([]);
 
   const appIsBusy = isLoading || videoUrl !== null || stereoVideoUrls !== null || activePreset !== null;
   const currentVideoSource = stereoVideoUrls ? stereoVideoUrls.left : videoUrl;
@@ -89,7 +90,14 @@ const WorldBuilder: React.FC = () => {
   };
 
   const handleStep = useCallback(async (action: CameraAction) => {
-    if (!currentFrame || isLoading) return;
+    if (!currentFrame) return;
+
+    if (isLoading) {
+      if (actionQueue.length < 5) {
+        setActionQueue(prev => [...prev, action]);
+      }
+      return;
+    }
 
     setIsLoading(true);
     setIsReadyForInput(false);
@@ -125,28 +133,30 @@ const WorldBuilder: React.FC = () => {
     setVideoUrl(null);
     setStereoVideoUrls(null);
 
-    if (activePreset) {
-      const nextStepIndex = presetStepIndex + 1;
-      if (nextStepIndex < activePreset.length) {
-        setPresetStepIndex(nextStepIndex);
-        setTimeout(() => handleStep(activePreset[nextStepIndex]), 100);
-      } else {
-        setActivePreset(null);
-        setPresetStepIndex(0);
-        setIsReadyForInput(true);
-      }
+    if (actionQueue.length > 0) {
+      const nextAction = actionQueue[0];
+      setActionQueue(prev => prev.slice(1));
+      setTimeout(() => handleStep(nextAction), 100);
     } else {
       setIsReadyForInput(true);
+      setActivePreset(null);
+      setPresetStepIndex(0);
     }
   };
 
   const handlePresetSelect = (presetKey: string) => {
-    if (appIsBusy) return;
+    if (appIsBusy && actionQueue.length > 0) return;
     const presetActions = PRESET_MOVEMENTS[presetKey];
     if (presetActions && presetActions.length > 0) {
       setActivePreset(presetActions);
-      setPresetStepIndex(0);
-      handleStep(presetActions[0]);
+      if (isLoading) {
+        setActionQueue(prev => [...prev, ...presetActions]);
+      } else {
+        handleStep(presetActions[0]);
+        if (presetActions.length > 1) {
+          setActionQueue(presetActions.slice(1));
+        }
+      }
     }
   };
 
@@ -200,7 +210,7 @@ const WorldBuilder: React.FC = () => {
   
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isReadyForInput || appIsBusy || mode !== AppMode.CAMERA) return;
+      if (mode !== AppMode.CAMERA) return;
 
       const action = KEY_MAP[event.key.toUpperCase() as keyof typeof KEY_MAP];
       if (action) {
@@ -213,19 +223,19 @@ const WorldBuilder: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [handleStep, isReadyForInput, appIsBusy, mode]);
+  }, [handleStep, mode]);
   
   const ControlPanel = () => (
     <div className="w-full md:w-1/4 bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col gap-6 self-stretch">
         <h2 className="text-xl font-semibold text-brand-text border-b border-gray-700 pb-2">Controls</h2>
-        <ModeToggle currentMode={mode} onModeChange={setMode} isDisabled={appIsBusy} />
+        <ModeToggle currentMode={mode} onModeChange={setMode} isDisabled={!currentFrame} />
         {mode === AppMode.CAMERA ? (
             <>
-                <Controls onAction={handleStep} isDisabled={!currentFrame || appIsBusy} />
+                <Controls onAction={handleStep} isDisabled={!currentFrame} />
                 <PresetSelector
                     presets={PRESET_MOVEMENTS}
                     onSelect={handlePresetSelect}
-                    isDisabled={!currentFrame || appIsBusy}
+                    isDisabled={!currentFrame}
                 />
             </>
         ) : (
@@ -233,7 +243,7 @@ const WorldBuilder: React.FC = () => {
               prompt={editPrompt}
               setPrompt={setEditPrompt}
               onEdit={handleEditScene}
-              isDisabled={appIsBusy}
+              isDisabled={!currentFrame}
             />
         )}
         <div className="mt-auto">
@@ -252,7 +262,7 @@ const WorldBuilder: React.FC = () => {
                 <PromptInput prompt={prompt} setPrompt={setPrompt} onGenerate={handleGenerateImage} />
             </div>
         ) : (
-             <div className="w-full flex-grow flex flex-col md:flex-row gap-6">
+             <div className="w-full flex-grow flex flex-col md:flex-row gap-6 justify-center">
                 <div className="w-full md:w-3/4 aspect-video bg-black rounded-lg shadow-2xl flex items-center justify-center overflow-hidden relative">
                     {isLoading && <Loader message={loadingMessage} />}
                     <VideoDisplay

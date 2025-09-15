@@ -8,6 +8,49 @@ if (!process.env.API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+const CACHE_PREFIX = 'video-cache-';
+
+const generateCacheKey = (frame: string, action: CameraAction): string => {
+  // Simple hash function
+  const hash = (s: string) => {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+      h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+    }
+    return h.toString();
+  };
+  return `${CACHE_PREFIX}${hash(frame)}-${hash(JSON.stringify(action))}`;
+};
+
+const getCachedVideo = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    console.error("Failed to read from localStorage", e);
+    return null;
+  }
+};
+
+const setCachedVideo = (key: string, videoUrl: string): void => {
+  try {
+    localStorage.setItem(key, videoUrl);
+  } catch (e) {
+    console.error("Failed to write to localStorage", e);
+    // Attempt to clear some old cache and retry
+    try {
+      // Clear 5 oldest entries
+      const keys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).sort();
+      for(let i = 0; i < 5 && i < keys.length; i++) {
+        localStorage.removeItem(keys[i]);
+      }
+      localStorage.setItem(key, videoUrl);
+    } catch (e2) {
+      console.error("Failed to write to localStorage even after clearing some cache", e2);
+    }
+  }
+};
+
+
 const base64ToParts = (base64: string) => {
     const match = base64.match(/^data:(image\/.+);base64,(.+)$/);
     if (!match) {
@@ -75,6 +118,14 @@ export const generateNextVideo = async (
     action: CameraAction,
     updateLoadingMessage: (message: string) => void
 ): Promise<string> => {
+    const cacheKey = generateCacheKey(lastFrameBase64, action);
+    const cachedVideo = getCachedVideo(cacheKey);
+    if (cachedVideo) {
+        updateLoadingMessage("Loading from cache...");
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate loading
+        return cachedVideo;
+    }
+
     const { mimeType, data } = base64ToParts(lastFrameBase64);
     
     let messageIndex = 0;
@@ -116,7 +167,17 @@ export const generateNextVideo = async (
         throw new Error(`Failed to fetch video: ${videoResponse.statusText}`);
     }
     const videoBlob = await videoResponse.blob();
-    return URL.createObjectURL(videoBlob);
+
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64data = reader.result as string;
+            setCachedVideo(cacheKey, base64data);
+            resolve(base64data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(videoBlob);
+    });
 };
 
 export const generateStereoVideo = async (
