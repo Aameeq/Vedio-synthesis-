@@ -105,7 +105,6 @@ const WorldBuilder: React.FC = () => {
     setVideoUrl(null);
     setStereoVideoUrls(null);
     setAudioUrl(null);
-    setOptimisticAction(action);
 
     try {
       if (isStereoMode) {
@@ -124,7 +123,6 @@ const WorldBuilder: React.FC = () => {
     } finally {
       setIsLoading(false);
       setLoadingMessage('');
-      setOptimisticAction(null);
     }
   }, [currentFrame, isLoading, isStereoMode]);
 
@@ -270,7 +268,6 @@ const WorldBuilder: React.FC = () => {
                         audioUrl={audioUrl}
                         frameUrl={currentFrame}
                         onVideoEnd={handleVideoEnd}
-                        optimisticAction={optimisticAction}
                     />
                     <VRPlayer src={currentVideoSource} stereoSrc={stereoVideoUrls} />
                     {currentVideoSource && <DownloadButton onClick={handleDownload} isDisabled={!currentVideoSource} isStereo={isStereoMode} />}
