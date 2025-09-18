@@ -11,13 +11,13 @@ import ErrorDisplaySource from '../components/ErrorDisplay.tsx?raw';
 import HeaderSource from '../components/Header.tsx?raw';
 import LoaderSource from '../components/Loader.tsx?raw';
 import ModeToggleSource from '../components/ModeToggle.tsx?raw';
+import ModelGeneratorSource from '../components/ModelGenerator.tsx?raw';
 import PresetSelectorSource from '../components/PresetSelector.tsx?raw';
 import PromptInputSource from '../components/PromptInput.tsx?raw';
 import SaveWorldButtonSource from '../components/SaveWorldButton.tsx?raw';
 import SceneEditorSource from '../components/SceneEditor.tsx?raw';
 import StereoToggleSource from '../components/StereoToggle.tsx?raw';
 import VideoDisplaySource from '../components/VideoDisplay.tsx?raw';
-import VRPlayerSource from '../components/VRPlayer.tsx?raw';
 
 export const COMPONENT_SOURCES = {
     'App.tsx': AppSource,
@@ -29,11 +29,11 @@ export const COMPONENT_SOURCES = {
     'Header.tsx': HeaderSource,
     'Loader.tsx': LoaderSource,
     'ModeToggle.tsx': ModeToggleSource,
+    'ModelGenerator.tsx': ModelGeneratorSource,
     'PresetSelector.tsx': PresetSelectorSource,
     'PromptInput.tsx': PromptInputSource,
     'SaveWorldButton.tsx': SaveWorldButtonSource,
     'SceneEditor.tsx': SceneEditorSource,
     'StereoToggle.tsx': StereoToggleSource,
     'VideoDisplay.tsx': VideoDisplaySource,
-    'VRPlayer.tsx': VRPlayerSource,
 };

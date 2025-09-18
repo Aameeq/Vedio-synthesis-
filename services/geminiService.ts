@@ -69,10 +69,71 @@ export const editImage = async (base64Image: string, prompt: string): Promise<st
     throw new Error("Image editing failed to return a new image.");
 };
 
+const VEO_TRANSITION_TEMPLATE = (startDesc: string, endDesc: string, transitionDesc: string) =>
+  `Create a seamless, high-quality cinematic video transition. The video must start with a scene that looks exactly like the uploaded image, which is described as: "${startDesc}". The video must smoothly transform into a final frame that is described as: "${endDesc}".
+The style of the transition should be: "${transitionDesc}".
+This is a single, continuous shot with no cuts. Duration: 4 seconds. 8k, hyper-realistic, Unreal Engine 5 look. 60fps, 720p, 16:9 aspect ratio. Seed: 12345`;
+
+
+export const generateTransitionVideo = async (
+    startFrameBase64: string,
+    startFrameDesc: string,
+    endFrameDesc: string,
+    transitionPrompt: string,
+    updateLoadingMessage: (message: string) => void
+): Promise<string> => {
+     const { mimeType, data } = base64ToParts(startFrameBase64);
+    
+    let messageIndex = 0;
+    const updateMessage = () => {
+        updateLoadingMessage(`Generating transition: ${LOADING_MESSAGES[messageIndex]}`);
+        messageIndex = (messageIndex + 1) % LOADING_MESSAGES.length;
+    };
+    updateMessage();
+
+    const prompt = VEO_TRANSITION_TEMPLATE(startFrameDesc, endFrameDesc, transitionPrompt);
+
+    let operation = await ai.models.generateVideos({
+        model: 'veo-2.0-generate-001',
+        prompt: prompt,
+        image: {
+            imageBytes: data,
+            mimeType: mimeType,
+        },
+        config: {
+            numberOfVideos: 1,
+        }
+    });
+
+    const interval = setInterval(updateMessage, 10000);
+
+    while (!operation.done) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        operation = await ai.operations.getVideosOperation({ operation: operation });
+    }
+    
+    clearInterval(interval);
+
+    const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+    if (!downloadLink) {
+        throw new Error("Video generation completed, but no download link was found.");
+    }
+
+    const videoUrl = `${downloadLink}&key=${process.env.API_KEY}`;
+    
+    const videoResponse = await fetch(videoUrl);
+    if (!videoResponse.ok) {
+        throw new Error(`Failed to fetch video: ${videoResponse.statusText}`);
+    }
+    const videoBlob = await videoResponse.blob();
+    return URL.createObjectURL(videoBlob);
+}
+
 
 export const generateNextVideo = async (
     lastFrameBase64: string, 
     action: CameraAction,
+    animationPrompt: string | undefined,
     updateLoadingMessage: (message: string) => void
 ): Promise<string> => {
     const { mimeType, data } = base64ToParts(lastFrameBase64);
@@ -82,7 +143,7 @@ export const generateNextVideo = async (
 
     let operation = await ai.models.generateVideos({
         model: 'veo-2.0-generate-001',
-        prompt: VEO_PROMPT_TEMPLATE(action),
+        prompt: VEO_PROMPT_TEMPLATE(action, animationPrompt),
         image: {
             imageBytes: data,
             mimeType: mimeType,
@@ -122,6 +183,7 @@ export const generateNextVideo = async (
 export const generateStereoVideo = async (
     leftEyeFrameBase64: string,
     action: CameraAction,
+    animationPrompt: string | undefined,
     updateLoadingMessage: (message: string) => void
 ): Promise<{ left: string; right: string; }> => {
     updateLoadingMessage("Generating right eye perspective...");
@@ -133,8 +195,8 @@ export const generateStereoVideo = async (
     updateLoadingMessage("Generating stereo video streams...");
 
     const [leftVideoUrl, rightVideoUrl] = await Promise.all([
-        generateNextVideo(leftEyeFrameBase64, action, () => {}),
-        generateNextVideo(rightEyeFrameBase64, action, () => {})
+        generateNextVideo(leftEyeFrameBase64, action, animationPrompt, () => {}),
+        generateNextVideo(rightEyeFrameBase64, action, animationPrompt, () => {})
     ]);
 
     return { left: leftVideoUrl, right: rightVideoUrl };
@@ -154,10 +216,90 @@ export const generateAudioDescription = async (scenePrompt: string): Promise<str
     return response.text;
 };
 
-// In a real application, this would come from an audio generation model.
-// For now, we use a placeholder to demonstrate the feature.
-export const getPlaceholderAudioUrl = (): string => {
-    return 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4'; // Using a video file with audio as a placeholder
+// A library of placeholder audio clips with associated keywords to simulate a text-to-audio model.
+const AMBIENT_SOUNDS: { keywords: string[]; url: string }[] = [
+    // --- Urban Environments ---
+    { 
+        keywords: ['city', 'urban', 'street', 'traffic', 'cars', 'metropolis'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4' 
+    },
+    { 
+        keywords: ['rain', 'storm', 'thunder', 'wet', 'puddles', 'gloomy'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4' // This one has a dramatic, stormy feel
+    },
+    { 
+        keywords: ['sirens', 'emergency', 'police', 'ambulance', 'night city'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4' // Has some intense city sounds
+    },
+    
+    // --- Natural Environments ---
+    { 
+        keywords: ['forest', 'jungle', 'woods', 'trees', 'nature'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' 
+    },
+    { 
+        keywords: ['birds', 'chirping', 'animals', 'wildlife', 'meadow'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' 
+    },
+    { 
+        keywords: ['water', 'river', 'ocean', 'waves', 'stream', 'beach'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4' // This has boat/water scenes
+    },
+    { 
+        keywords: ['wind', 'howling', 'desert', 'empty', 'desolate', 'plains'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4' // Open road, windy feel
+    },
+
+    // --- Sci-Fi / Fantasy ---
+    { 
+        keywords: ['sci-fi', 'futuristic', 'dystopian', 'cyberpunk', 'neon', 'robot', 'machinery', 'industrial'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4' // Perfect for sci-fi/robotics
+    },
+    { 
+        keywords: ['surreal', 'dream', 'space', 'alien', 'ethereal', 'magical'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4' 
+    },
+    
+    // --- Action & Specific Effects ---
+    { 
+        keywords: ['war', 'battle', 'fire', 'explosion', 'dramatic', 'intense', 'conflict'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4' 
+    },
+    { 
+        keywords: ['adventure', 'journey', 'explore', 'driving', 'flying'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4' 
+    },
+    { 
+        keywords: ['footsteps', 'gravel', 'walking', 'path', 'dirt road', 'quiet'], 
+        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4' // Has distinct dirt road sounds
+    },
+];
+const DEFAULT_AUDIO_URL = 'https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4';
+
+
+export const generateAmbientSoundtrack = async (audioDescription: string): Promise<string> => {
+    // This function simulates a call to an audio generation model.
+    // It finds the best match from the library by scoring based on keyword frequency.
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+
+    const lowercasedDescription = audioDescription.toLowerCase();
+    
+    let bestMatch = { url: DEFAULT_AUDIO_URL, score: 0 };
+
+    AMBIENT_SOUNDS.forEach(sound => {
+        const score = sound.keywords.reduce((acc, keyword) => {
+            if (lowercasedDescription.includes(keyword)) {
+                return acc + 1;
+            }
+            return acc;
+        }, 0);
+
+        if (score > bestMatch.score) {
+            bestMatch = { url: sound.url, score: score };
+        }
+    });
+
+    return bestMatch.url;
 };
 
 export const generateArTutorial = async (platform: 'instagram' | 'snapchat', modelName: string): Promise<string> => {
@@ -188,6 +330,69 @@ export const generateArTutorial = async (platform: 'instagram' | 'snapchat', mod
 
     return response.text;
 };
+
+// Placeholder 3D model library to simulate a text-to-3D model.
+const MODEL_LIBRARY: { keywords: string[]; url: string; name: string }[] = [
+    { 
+        keywords: ['astronaut', 'space', 'helmet', 'sci-fi'], 
+        url: 'https://storage.googleapis.com/ar-lab-models/astronaut_helmet.glb',
+        name: 'AstronautHelmet.glb'
+    },
+    { 
+        keywords: ['sunglasses', 'glasses', 'shades', 'cool', 'aviator'], 
+        url: 'https://storage.googleapis.com/ar-lab-models/cool_sunglasses.glb',
+        name: 'CoolSunglasses.glb'
+    },
+    { 
+        keywords: ['viking', 'norse', 'horn', 'warrior'], 
+        url: 'https://storage.googleapis.com/ar-lab-models/viking_helmet.glb',
+        name: 'VikingHelmet.glb'
+    },
+    {
+        keywords: ['knight', 'medieval', 'armor', 'visor'],
+        url: 'https://storage.googleapis.com/ar-lab-models/knight_helmet.glb',
+        name: 'KnightHelmet.glb'
+    },
+     {
+        keywords: ['fox', 'animal', 'mask', 'kitsune'],
+        url: 'https://storage.googleapis.com/ar-lab-models/fox_mask.glb',
+        name: 'FoxMask.glb'
+    }
+];
+const DEFAULT_MODEL = { 
+    url: 'https://storage.googleapis.com/ar-lab-models/cool_sunglasses.glb', 
+    name: 'CoolSunglasses.glb' 
+};
+
+export const generate3DModel = async (prompt: string, image?: string): Promise<{ url: string, name: string }> => {
+    // This function simulates a call to a text-to-3D model.
+    // It finds the best match from the library by scoring based on keyword frequency.
+    if (image) {
+        console.log("Image provided, but this simulated function will only use the text prompt.");
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate network and generation delay
+
+    const lowercasedPrompt = prompt.toLowerCase();
+    
+    let bestMatch = { ...DEFAULT_MODEL, score: 0 };
+
+    MODEL_LIBRARY.forEach(model => {
+        const score = model.keywords.reduce((acc, keyword) => {
+            if (lowercasedPrompt.includes(keyword)) {
+                return acc + 1;
+            }
+            return acc;
+        }, 0);
+
+        if (score > bestMatch.score) {
+            bestMatch = { url: model.url, name: model.name, score: score };
+        }
+    });
+
+    return { url: bestMatch.url, name: bestMatch.name };
+};
+
 
 // Fix: Add missing generateComponentTests function.
 export const generateComponentTests = async (componentName: string, sourceCode: string): Promise<string> => {

@@ -1,10 +1,12 @@
-import { CameraAction } from './types';
+import { CameraAction, Transform } from './types';
 
-export const VEO_PROMPT_TEMPLATE = (action: string) => 
-  `Continuation of the uploaded image, professional cinematic color grading, hyper-realistic, 8k, Unreal Engine 5 look.
-Camera action: ${action} 3 meters in 2 seconds.
+export const VEO_PROMPT_TEMPLATE = (action: string, animationPrompt?: string) => {
+  const animationLine = animationPrompt ? `\nScene Animation: ${animationPrompt}.` : '';
+  return `Continuation of the uploaded image, professional cinematic color grading, hyper-realistic, 8k, Unreal Engine 5 look.
+Camera action: ${action} 3 meters in 2 seconds.${animationLine}
 Style: Zero cuts, continuous shot, 60 fps, 8 seconds duration, 720p resolution, 16:9 aspect ratio.
 Seed: 12345`;
+};
 
 export const KEY_MAP: { [key: string]: CameraAction } = {
   'A': CameraAction.PAN_LEFT,
@@ -33,4 +35,10 @@ export const PRESET_MOVEMENTS: { [key: string]: CameraAction[] } = {
   'Dolly Forward': [CameraAction.ZOOM_IN, CameraAction.ZOOM_IN],
   'Establishing Shot': [CameraAction.PAN_RIGHT, CameraAction.TILT_DOWN, CameraAction.ZOOM_OUT],
   'Push In & Pan Right': [CameraAction.ZOOM_IN, CameraAction.PAN_RIGHT],
+};
+
+export const DEFAULT_TRANSFORM: Transform = {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: 1,
 };

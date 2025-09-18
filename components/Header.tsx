@@ -15,10 +15,10 @@ const NavLink: React.FC<{
 }> = ({ label, isActive, onClick }) => (
   <button
     onClick={onClick}
-    className={`px-4 py-2 text-sm font-bold rounded-full transition-colors duration-200 ${
+    className={`px-4 py-2 text-sm font-bold rounded-full transition-all duration-200 transform ${
       isActive
-        ? 'bg-brand-primary text-white'
-        : 'bg-gray-700 text-brand-text-secondary hover:bg-gray-600'
+        ? 'bg-brand-primary text-white scale-105 shadow-lg'
+        : 'bg-gray-700 text-brand-text-secondary hover:bg-gray-600 hover:-translate-y-px'
     }`}
     aria-current={isActive ? 'page' : undefined}
   >
@@ -49,7 +49,7 @@ const Header: React.FC<HeaderProps> = ({ currentRoute, onNavigate, onLibraryClic
              {isWorldBuilder && onLibraryClick && (
                 <button
                 onClick={onLibraryClick}
-                className="px-4 py-2 bg-gray-700 text-white text-sm font-semibold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark focus:ring-brand-primary transition-colors"
+                className="px-4 py-2 bg-gray-700 text-white text-sm font-semibold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark focus:ring-brand-primary transition-all transform hover:-translate-y-px"
                 aria-label="Open saved worlds library"
                 >
                 Library

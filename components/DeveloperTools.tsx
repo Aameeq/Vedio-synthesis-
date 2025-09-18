@@ -43,8 +43,8 @@ const DeveloperTools: React.FC<DeveloperToolsProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-brand-dark w-full max-w-4xl h-[90vh] rounded-lg shadow-2xl flex flex-col border border-gray-700" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
+      <div className="bg-brand-dark w-full max-w-4xl h-[90vh] rounded-lg shadow-2xl flex flex-col border border-gray-700 animate-fadeInScaleUp" onClick={(e) => e.stopPropagation()}>
         <header className="p-4 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
           <div>
             <h2 className="text-xl font-bold">Developer Tools: AI Test Generator</h2>

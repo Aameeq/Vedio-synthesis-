@@ -31,6 +31,11 @@ const App: React.FC = () => {
     window.location.hash = `/${newRoute}`;
   };
 
+  const handleLibraryClick = () => {
+    // This event is listened to by WorldBuilder.tsx to open the modal
+    document.dispatchEvent(new CustomEvent('open-library'));
+  };
+
   const renderPage = () => {
     switch (route) {
       case 'ar-forge':
@@ -43,7 +48,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-brand-dark flex flex-col items-center p-4 sm:p-6 lg:p-8 font-sans">
-      <Header currentRoute={route} onNavigate={navigate} />
+      <Header currentRoute={route} onNavigate={navigate} onLibraryClick={handleLibraryClick} />
       {renderPage()}
     </div>
   );

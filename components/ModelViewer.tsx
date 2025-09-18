@@ -1,13 +1,13 @@
 import React from 'react';
 
-// Fix: Correctly type the custom <model-viewer> element for JSX.
-// This simplified declaration avoids potential deep type conflicts from React.DetailedHTMLProps
-// while still providing type safety for the props used in this component.
+// This global declaration is necessary to add TypeScript support for the <model-viewer> custom element.
+// It defines the element in the JSX.IntrinsicElements namespace, allowing it to be used in TSX
+// with type-checking for its props like `src`, `cameraControls`, etc.
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      // Typing for the <model-viewer> web component.
-      // React's JSX requires camelCase properties for attributes that are kebab-case in HTML (e.g., camera-controls becomes cameraControls).
+      // Correctly define the 'model-viewer' custom element and its props for TypeScript.
+      // This uses React.HTMLAttributes to ensure compatibility with React and standard HTML attributes.
       'model-viewer': React.HTMLAttributes<HTMLElement> & {
         src?: string;
         alt?: string;
@@ -31,6 +31,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ src, fileName }) => {
       <model-viewer
         src={src}
         alt={`A 3D model of ${fileName}`}
+        // The attributes are passed as camelCase props to match React conventions.
         cameraControls
         autoRotate
         style={{ width: '100%', height: '100%', backgroundColor: 'transparent' }}

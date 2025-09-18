@@ -10,10 +10,10 @@ interface ModeToggleProps {
 const ModeToggle: React.FC<ModeToggleProps> = ({ currentMode, onModeChange, isDisabled }) => {
   const getButtonClasses = (mode: AppMode) => {
     const isActive = currentMode === mode;
-    return `px-6 py-2 text-sm font-bold rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-brand-primary ${
+    return `px-6 py-2 text-sm font-bold rounded-full transition-all duration-200 transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-brand-primary ${
       isActive
-        ? 'bg-brand-primary text-white'
-        : 'bg-gray-700 text-brand-text-secondary hover:bg-gray-600'
+        ? 'bg-brand-primary text-white scale-105 shadow-md'
+        : 'bg-gray-700 text-brand-text-secondary hover:bg-gray-600 hover:scale-105'
     } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`;
   };
 

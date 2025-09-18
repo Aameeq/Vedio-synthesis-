@@ -27,14 +27,13 @@ const ARPreview: React.FC<ARPreviewProps> = ({ modelFile, stream, transform, anc
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
     const modelRef = useRef<THREE.Group | null>(null);
     const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
-    const animationFrameId = useRef<number>();
+    const animationFrameId = useRef<number | null>(null);
     const lastVideoTimeRef = useRef(-1);
     const [isInitialized, setIsInitialized] = useState(false);
 
     useEffect(() => {
         const init = async () => {
             try {
-                // Fix: Ensure the mandatory path argument is provided to forVisionTasks.
                 const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
                 const landmarker = await FaceLandmarker.createFromOptions(vision, {
                     baseOptions: {

@@ -33,10 +33,9 @@ A simple hash-based router in `App.tsx` directs the user to one of two main "pag
 ### World Builder (`pages/WorldBuilder.tsx`)
 This page manages all state for the steerable video feature.
 - **`PromptInput.tsx`**: The initial UI for entering a text prompt.
-- **`VideoDisplay.tsx`**: The main viewscreen. Renders either the current frame image or the playing video. Captures the final frame using an HTML canvas.
+- **`VideoDisplay.tsx`**: The main viewscreen. Renders either the current frame image or the playing video. Captures the final frame using an HTML canvas. Also manages the WebXR session for VR playback.
 - **`Controls.tsx` / `PresetSelector.tsx`**: UI for camera movement.
 - **`SceneEditor.tsx`**: UI for `Edit Mode`.
-- **`VRPlayer.tsx`**: Manages the WebXR session.
 - **`AssetLibrary.tsx`**: Modal for saved worlds.
 
 ### AR Filter Forge (`pages/ARForge.tsx`)
