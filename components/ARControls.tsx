@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnchorPoint, Transform } from '../types';
 import { DEFAULT_TRANSFORM } from '../constants';
 
@@ -33,6 +33,15 @@ const ControlSlider: React.FC<{
 );
 
 const AnchorPointVisualizer: React.FC<{ anchor: AnchorPoint }> = ({ anchor }) => {
+    const [isPulsing, setIsPulsing] = useState(false);
+
+    // Add a pulse effect when the anchor point changes
+    useEffect(() => {
+        setIsPulsing(true);
+        const timer = setTimeout(() => setIsPulsing(false), 150);
+        return () => clearTimeout(timer);
+    }, [anchor]);
+
     const points: Record<AnchorPoint, { x: number; y: number; }> = {
         head: { x: 50, y: 12 },
         forehead: { x: 50, y: 30 },
@@ -41,6 +50,7 @@ const AnchorPointVisualizer: React.FC<{ anchor: AnchorPoint }> = ({ anchor }) =>
     };
 
     const currentPoint = points[anchor];
+    const transitionStyle = { transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' };
 
     return (
         <div className="flex items-center justify-center bg-gray-900 rounded-md p-2 mt-2">
@@ -60,8 +70,8 @@ const AnchorPointVisualizer: React.FC<{ anchor: AnchorPoint }> = ({ anchor }) =>
                 <path d="M40 70 Q 50 75 60 70" stroke="#9ca3af" strokeWidth="1.5" fill="none" strokeLinecap="round" />
 
                 {/* Animated Highlight Point */}
-                <circle cx={currentPoint.x} cy={currentPoint.y} r="8" fill="url(#glow)" style={{ transition: 'all 0.3s ease-in-out' }} />
-                <circle cx={currentPoint.x} cy={currentPoint.y} r="3" fill="#67e8f9" stroke="white" strokeWidth="1" style={{ transition: 'all 0.3s ease-in-out' }} />
+                <circle cx={currentPoint.x} cy={currentPoint.y} r={isPulsing ? 11 : 8} fill="url(#glow)" style={transitionStyle} />
+                <circle cx={currentPoint.x} cy={currentPoint.y} r={isPulsing ? 4 : 3} fill="#67e8f9" stroke="white" strokeWidth="1" style={transitionStyle} />
             </svg>
         </div>
     );

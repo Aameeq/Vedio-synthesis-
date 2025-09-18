@@ -94,6 +94,16 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ videoUrl, audioUrl, frameUr
     }
   }, [videoUrl, audioUrl]);
 
+  // Bug Fix: When the audio source changes, ensure the new audio element's
+  // volume and muted state match the component's state.
+  useEffect(() => {
+    const audioElement = audioRef.current;
+    if (audioElement) {
+        audioElement.volume = volume;
+        audioElement.muted = isMuted;
+    }
+  }, [audioUrl]);
+
   const handleVideoEndInternal = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -229,7 +239,7 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ videoUrl, audioUrl, frameUr
         video.removeEventListener('ended', onEnded);
         audio?.removeEventListener('volumechange', onVolumeChange);
     };
-  }, [onVideoEnd]);
+  }, [onVideoEnd, audioUrl]);
   
   useEffect(() => {
     const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -422,6 +432,12 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ videoUrl, audioUrl, frameUr
       }
   };
 
+  const getTrackStyle = (value: number, max: number) => {
+    const progress = max > 0 ? (value / max) * 100 : 0;
+    return {
+      background: `linear-gradient(to right, #4f46e5 ${progress}%, #ffffff33 ${progress}%)`
+    };
+  };
 
   return (
     <>
@@ -472,14 +488,10 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ videoUrl, audioUrl, frameUr
                   step="any"
                   value={currentTime}
                   onChange={handleSeek}
-                  className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer range-thumb"
+                  style={getTrackStyle(currentTime, duration)}
+                  className="w-full h-1.5 rounded-lg appearance-none cursor-pointer range-thumb"
                   aria-label="Seek"
               />
-              <style>{`
-                .range-thumb { -webkit-appearance: none; appearance: none; }
-                .range-thumb::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: #4f46e5; border-radius: 50%; cursor: pointer; margin-top: -7px; }
-                .range-thumb::-moz-range-thumb { width: 16px; height: 16px; background: #4f46e5; border-radius: 50%; cursor: pointer; border: 0; }
-              `}</style>
 
               <div className="flex items-center justify-between text-white mt-2">
                   <div className="flex items-center gap-2 md:gap-4">
@@ -496,7 +508,8 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ videoUrl, audioUrl, frameUr
                               step="any"
                               value={isMuted ? 0 : volume}
                               onChange={handleVolumeChange}
-                              className="w-0 group-hover:w-24 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer transition-all duration-300 range-thumb"
+                              style={getTrackStyle(isMuted ? 0 : volume, 1)}
+                              className="w-0 group-hover:w-24 h-1.5 rounded-lg appearance-none cursor-pointer transition-all duration-300 range-thumb"
                               aria-label="Volume"
                           />
                       </div>

@@ -41,7 +41,7 @@ const PlaybackModal: React.FC<PlaybackModalProps> = ({ playlist, onClose }) => {
     setCurrentIndex(0);
   };
 
-  if (playlist.length === 0) {
+  if (!playlist || playlist.length === 0) {
     onClose();
     return null;
   }

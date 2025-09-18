@@ -468,12 +468,14 @@ const WorldBuilder: React.FC = () => {
           />
       )}
 
-      {modalPlaybackUrl && (
-          <PlaybackModal playlist={[modalPlaybackUrl]} onClose={() => setModalPlaybackUrl(null)} />
-      )}
-
-       {modalPlaylist && (
-          <PlaybackModal playlist={modalPlaylist} onClose={() => setModalPlaylist(null)} />
+      {(modalPlaybackUrl || modalPlaylist) && (
+          <PlaybackModal 
+              playlist={modalPlaybackUrl ? [modalPlaybackUrl] : modalPlaylist!} 
+              onClose={() => {
+                  setModalPlaybackUrl(null);
+                  setModalPlaylist(null);
+              }}
+          />
       )}
     </>
   );
