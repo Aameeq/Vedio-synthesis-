@@ -1,23 +1,17 @@
 import React from 'react';
 
-// Fix: Refactor the custom element type definition to be more robust.
-// To resolve issues with custom elements in React, we declare the custom element for TypeScript
-// by augmenting the JSX.IntrinsicElements interface. This makes TypeScript aware of 'model-viewer'
-// and allows it to be used like a native JSX element with type checking.
+// Fix: Correctly define types for the <model-viewer> custom element.
+// This adds the custom element to TypeScript's JSX namespace, allowing it to be used
+// with type checking and standard React props like `style` or `key`.
 declare global {
   namespace JSX {
-    // By extending React's HTMLAttributes, we get all the standard HTML props like `style`, `className`, etc.
-    // We then add the specific properties for the 'model-viewer' element.
-    interface ModelViewerAttributes extends React.HTMLAttributes<HTMLElement> {
-      src?: string;
-      alt?: string;
-      cameraControls?: boolean;
-      autoRotate?: boolean;
-    }
-
     interface IntrinsicElements {
-      // Use the custom attributes interface for the 'model-viewer' tag.
-      'model-viewer': ModelViewerAttributes;
+      'model-viewer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        src?: string;
+        alt?: string;
+        cameraControls?: boolean;
+        autoRotate?: boolean;
+      };
     }
   }
 }

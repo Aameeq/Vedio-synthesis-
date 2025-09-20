@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Modality } from "@google/genai";
 import { CameraAction } from '../types';
 import { VEO_PROMPT_TEMPLATE, LOADING_MESSAGES } from "../constants";

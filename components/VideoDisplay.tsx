@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
@@ -41,7 +42,8 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d'); // Fix: Was 'd'
+    // Fix: Was 'd'
+    const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       onVideoEnd(canvas.toDataURL('image/jpeg'));

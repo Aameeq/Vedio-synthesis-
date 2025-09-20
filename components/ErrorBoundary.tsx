@@ -1,50 +1,34 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React from "react";
 
-interface Props {
-  children: ReactNode;
-}
+export class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean; error: any}> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
 
-interface State {
-  hasError: boolean;
-  error?: Error;
-}
-
-class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-  };
-
-  public static getDerivedStateFromError(error: Error): State {
-    // Update state so the next render will show the fallback UI.
+  static getDerivedStateFromError(error: any) {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // You can also log the error to an error reporting service
-    console.error("Uncaught error:", error, errorInfo);
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 
-  public render() {
+  render() {
     if (this.state.hasError) {
-      // You can render any custom fallback UI
       return (
-        <div className="w-full h-full flex items-center justify-center p-4">
-            <div className="w-full max-w-2xl bg-red-900/50 border border-red-700 text-white px-6 py-8 rounded-lg text-center">
-                <h1 className="text-2xl font-bold mb-2">Something went wrong.</h1>
-                <p className="text-red-200 mb-4">An unexpected error occurred, preventing the application from rendering correctly.</p>
-                <details className="text-left bg-brand-dark-secondary p-3 rounded-md">
-                    <summary className="cursor-pointer font-semibold">Error Details</summary>
-                    <pre className="mt-2 text-sm text-red-300 whitespace-pre-wrap break-all">
-                        {this.state.error?.toString()}
-                    </pre>
-                </details>
-            </div>
+        <div style={{color: "white", background: "darkred", padding: 24}}>
+          <h2>Something went wrong!</h2>
+          <pre>{String(this.state.error)}</pre>
         </div>
       );
     }
-
     return this.props.children;
   }
 }
 
-export default ErrorBoundary;
+/*
+Note: The original file had a default export. This has been changed to a named export
+as requested by the user's new App.tsx implementation.
+To use this, you'll need `import { ErrorBoundary } from './components/ErrorBoundary';`
+*/
