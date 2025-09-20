@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import WorldBuilder from './pages/WorldBuilder';
 import ARForge from './pages/ARForge';
+import ErrorBoundary from './components/ErrorBoundary';
 
 type Route = 'world-builder' | 'ar-forge';
 
@@ -48,7 +49,9 @@ const App: React.FC = () => {
     <div className="h-screen bg-brand-dark flex flex-col font-sans text-slate-200">
       <Header currentRoute={route} onNavigate={navigate} onLibraryClick={handleLibraryClick} />
       <main className="w-full flex-grow flex flex-col overflow-hidden">
-        {renderPage()}
+        <ErrorBoundary>
+          {renderPage()}
+        </ErrorBoundary>
       </main>
     </div>
   );

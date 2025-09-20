@@ -23,6 +23,7 @@ import ARForgeSource from '../pages/ARForge.tsx?raw';
 import WorldBuilderSource from '../pages/WorldBuilder.tsx?raw';
 import ARPreviewSource from '../components/ARPreview.tsx?raw';
 import ARControlsSource from '../components/ARControls.tsx?raw';
+import AnimationControlsSource from '../components/AnimationControls.tsx?raw';
 
 
 export const COMPONENT_SOURCES = {
@@ -32,6 +33,7 @@ export const COMPONENT_SOURCES = {
     'ARControls.tsx': ARControlsSource,
     'ARForge.tsx': ARForgeSource,
     'ARPreview.tsx': ARPreviewSource,
+    'AnimationControls.tsx': AnimationControlsSource,
     'Controls.tsx': ControlsSource,
     'DownloadButton.tsx': DownloadButtonSource,
     'ErrorDisplay.tsx': ErrorDisplaySource,

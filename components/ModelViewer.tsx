@@ -1,18 +1,23 @@
 import React from 'react';
 
 // To resolve issues with custom elements in React, we declare the custom element for TypeScript.
+
+// First, define an interface for the element's attributes, extending standard HTML attributes.
+interface ModelViewerAttributes extends React.HTMLAttributes<HTMLElement> {
+    src?: string;
+    alt?: string;
+    // Fix: Use camelCase for custom element properties. React passes these as properties
+    // on the DOM element, and the model-viewer element expects camelCase (e.g., `cameraControls`).
+    // The original kebab-case ('camera-controls') does not map to a valid property.
+    cameraControls?: boolean;
+    autoRotate?: boolean;
+}
+
+// Then, augment the JSX IntrinsicElements interface to make TypeScript aware of 'model-viewer'.
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      // Fix: Correctly type the 'model-viewer' custom element.
-      // The previous type definition was causing a TypeScript error. Using React.DetailedHTMLProps
-      // provides a more robust type that includes standard HTML attributes along with custom ones.
-      'model-viewer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
-        src?: string;
-        alt?: string;
-        'camera-controls'?: boolean;
-        'auto-rotate'?: boolean;
-      }, HTMLElement>;
+      'model-viewer': ModelViewerAttributes;
     }
   }
 }
@@ -30,8 +35,9 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ src, fileName }) => {
       <model-viewer
         src={src}
         alt={`A 3D model of ${fileName}`}
-        camera-controls
-        auto-rotate
+        // Fix: Use camelCase props to set properties on the custom element directly.
+        cameraControls
+        autoRotate
         style={{ width: '100%', height: '100%', backgroundColor: 'transparent' }}
       />
     </div>
