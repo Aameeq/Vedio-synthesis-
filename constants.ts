@@ -1,9 +1,10 @@
 import { CameraAction, Transform } from './types';
 
-export const VEO_PROMPT_TEMPLATE = (action: string, animationPrompt?: string) => {
+export const VEO_PROMPT_TEMPLATE = (action: string, animationPrompt?: string, isStyleLocked?: boolean) => {
   const animationLine = animationPrompt ? `\nScene Animation: ${animationPrompt}.` : '';
+  const styleLockLine = isStyleLocked ? `\nStyle Lock: Adhere strictly to the artistic style of the starting frame.` : '';
   return `Continuation of the uploaded image, professional cinematic color grading, hyper-realistic, 8k, Unreal Engine 5 look.
-Camera action: ${action} 3 meters in 2 seconds.${animationLine}
+Camera action: ${action} 3 meters in 2 seconds.${animationLine}${styleLockLine}
 Style: Zero cuts, continuous shot, 60 fps, 8 seconds duration, 720p resolution, 16:9 aspect ratio.
 Seed: 12345`;
 };

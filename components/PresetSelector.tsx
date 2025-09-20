@@ -17,22 +17,25 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({ presets, onSelect, isDi
   };
 
   return (
-    <div className="w-full max-w-xs">
+    <div className="relative">
       <select
         id="preset-selector"
         onChange={handleChange}
         disabled={isDisabled}
-        className="w-full bg-gray-700 border-2 border-gray-600 text-brand-text-secondary rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed text-center"
+        className="w-full h-12 pl-4 pr-10 bg-slate-700/50 border border-transparent text-slate-300 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all disabled:opacity-50 appearance-none text-center"
         defaultValue=""
         aria-label="Select a cinematic camera movement"
       >
-        <option value="" disabled>-- Select a Preset Movement --</option>
+        <option value="" disabled>Cinematic Presets</option>
         {Object.keys(presets).map((key) => (
-          <option key={key} value={key}>
+          <option key={key} value={key} className="bg-slate-800">
             {key}
           </option>
         ))}
       </select>
+      <div className="absolute top-1/2 right-4 -translate-y-1/2 pointer-events-none">
+        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+      </div>
     </div>
   );
 };

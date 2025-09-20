@@ -1,26 +1,9 @@
-import React, { useRef, useEffect, useState } from 'react';
-
-// Simple vertex shader to position and texture the video screen
-const vertexShaderSource = `
-  attribute vec4 a_position;
-  attribute vec2 a_texcoord;
-  uniform mat4 u_matrix;
-  varying vec2 v_texcoord;
-  void main() {
-    gl_Position = u_matrix * a_position;
-    v_texcoord = a_texcoord;
-  }
-`;
-
-// Simple fragment shader to apply the video texture
-const fragmentShaderSource = `
-  precision mediump float;
-  varying vec2 v_texcoord;
-  uniform sampler2D u_texture;
-  void main() {
-    gl_FragColor = texture2D(u_texture, v_texcoord);
-  }
-`;
+import React, { useRef, useEffect, useCallback } from 'react';
+import * as THREE from 'three';
+import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
+import DownloadButton from './DownloadButton';
+import SaveWorldButton from './SaveWorldButton';
+import AudioControl from './AudioControl';
 
 interface VideoDisplayProps {
   videoUrl: string | null;
@@ -29,502 +12,282 @@ interface VideoDisplayProps {
   frameUrl: string | null;
   onVideoEnd: (lastFrameDataUrl: string) => void;
   isLoading: boolean;
+  isReady: boolean;
+  isStereo: boolean;
+  onSave: () => void;
+  onAddAmbiance: () => void;
+  isGeneratingAudio: boolean;
+  // Fix: Add missing audioDescription prop to the interface.
+  audioDescription: string | null;
 }
 
-const PlayIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M8 5v14l11-7z" /></svg>;
-const PauseIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>;
-const VolumeHighIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>;
-const VolumeOffIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" /></svg>;
-const FullscreenEnterIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>;
-const FullscreenExitIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 0-2-2h-3M3 16h3a2 2 0 0 0 2-2v-3" /></svg>;
-
-const formatTime = (timeInSeconds: number): string => {
-    if (isNaN(timeInSeconds) || timeInSeconds < 0) return '00:00';
-    const minutes = Math.floor(timeInSeconds / 60);
-    const seconds = Math.floor(timeInSeconds % 60);
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-};
-
-const VideoDisplay: React.FC<VideoDisplayProps> = ({ videoUrl, audioUrl, frameUrl, onVideoEnd, isLoading, stereoVideoUrls }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
+  // Fix: Destructure the new audioDescription prop.
+  const { videoUrl, stereoVideoUrls, audioUrl, frameUrl, onVideoEnd, isLoading, isReady, isStereo, onSave, onAddAmbiance, isGeneratingAudio, audioDescription } = props;
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const hideControlsTimeoutRef = useRef<number | null>(null);
+  const vrButtonContainerRef = useRef<HTMLDivElement>(null);
 
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [areControlsVisible, setAreControlsVisible] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  
-  // --- VR State and Refs ---
-  const [isVRSupported, setIsVRSupported] = useState(false);
-  const [xrSession, setXRSession] = useState<any | null>(null);
-  const vrCanvasRef = useRef<HTMLCanvasElement>(null);
-  const glRef = useRef<WebGLRenderingContext | null>(null);
-  const programRef = useRef<WebGLProgram | null>(null);
-  const videoRefRight = useRef<HTMLVideoElement | null>(null);
-  const videoTextureLeftRef = useRef<WebGLTexture | null>(null);
-  const videoTextureRightRef = useRef<WebGLTexture | null>(null);
-  const xrRefSpaceRef = useRef<any>(null);
-  const positionBufferRef = useRef<WebGLBuffer | null>(null);
-  const texcoordBufferRef = useRef<WebGLBuffer | null>(null);
-  
-  // Auto-play new videos
-  useEffect(() => {
-    const videoElement = videoRef.current;
-    const audioElement = audioRef.current;
-
-    if (videoUrl && videoElement) {
-      setIsPlaying(true);
-      videoElement.currentTime = 0;
-      if(audioElement) audioElement.currentTime = 0;
-
-      videoElement.play().catch(error => {
-        console.error("Video auto-play failed:", error);
-        setIsPlaying(false);
-      });
-
-      if (audioElement && audioUrl) {
-        audioElement.play().catch(e => console.error("Audio auto-play failed", e));
-      }
-    }
-  }, [videoUrl, audioUrl]);
-
-  // Bug Fix: When the audio source changes, ensure the new audio element's
-  // volume and muted state match the component's state.
-  useEffect(() => {
-    const audioElement = audioRef.current;
-    if (audioElement) {
-        audioElement.volume = volume;
-        audioElement.muted = isMuted;
-    }
-  }, [audioUrl]);
-
-  const handleVideoEndInternal = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    audioRef.current?.pause();
-
-    if (video && canvas) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg');
-        onVideoEnd(dataUrl);
-      }
-    }
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
-  
-  const togglePlay = () => {
-    const video = videoRef.current;
-    const audio = audioRef.current;
+
+  const handleVideoEndCallback = useCallback(() => {
+    const video = videoUrl ? videoRef.current : null;
     if (!video) return;
 
-    if (video.paused) {
-      video.play();
-      audio?.play();
-    } else {
-      video.pause();
-      audio?.pause();
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      onVideoEnd(canvas.toDataURL('image/jpeg'));
     }
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = parseFloat(e.target.value);
-    if (videoRef.current) videoRef.current.currentTime = newTime;
-    if (audioRef.current) audioRef.current.currentTime = newTime;
-    setCurrentTime(newTime);
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    if (audioRef.current) {
-        audioRef.current.volume = newVolume;
-        audioRef.current.muted = newVolume === 0;
-    }
-  };
-  
-  const toggleMute = () => {
-    if (audioRef.current) {
-        audioRef.current.muted = !audioRef.current.muted;
-    }
-  }
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-        containerRef.current?.requestFullscreen().catch(err => {
-            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-        });
-    } else {
-        document.exitFullscreen();
-    }
-  };
-
-  const showControls = () => {
-    setAreControlsVisible(true);
-    if (hideControlsTimeoutRef.current) {
-        clearTimeout(hideControlsTimeoutRef.current);
-    }
-  };
-
-  const hideControls = () => {
-    if (isPlaying) {
-        setAreControlsVisible(false);
-    }
-  };
-
-  const startHideTimer = () => {
-    if (hideControlsTimeoutRef.current) {
-      clearTimeout(hideControlsTimeoutRef.current);
-    }
-    hideControlsTimeoutRef.current = window.setTimeout(() => {
-        if (isPlaying) {
-            hideControls();
-        }
-    }, 3000);
-  };
-
-  const handleMouseMove = () => {
-    showControls();
-    startHideTimer();
-  };
-  
-  useEffect(() => {
-      if (!isPlaying) {
-          showControls();
-      } else {
-          startHideTimer();
-      }
-  }, [isPlaying]);
-
+  }, [videoUrl, onVideoEnd]);
 
   useEffect(() => {
     const video = videoRef.current;
-    const audio = audioRef.current;
     if (!video) return;
 
-    const updateTime = () => setCurrentTime(video.currentTime);
-    const updateDuration = () => setDuration(video.duration);
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
-    const onEnded = () => {
-        setIsPlaying(false);
-        handleVideoEndInternal();
+    video.addEventListener('ended', handleVideoEndCallback);
+
+    return () => {
+      video.removeEventListener('ended', handleVideoEndCallback);
     };
-    const onVolumeChange = () => {
-        if(audio){
-            setVolume(audio.volume);
-            setIsMuted(audio.muted);
-        }
-    };
+  }, [videoUrl, handleVideoEndCallback]);
+  
+  // --- WebXR Logic ---
+  useEffect(() => {
+    if (!vrButtonContainerRef.current || (!videoUrl && !stereoVideoUrls)) return;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 2;
+
+    const button = XRButton.createButton(renderer, { optionalFeatures: ['local-floor', 'bounded-floor'] });
+    button.style.position = 'absolute';
+    button.style.bottom = '120px';
+    button.style.right = '16px';
+    button.style.zIndex = '10';
+    vrButtonContainerRef.current.appendChild(button);
+
+    // Video setup
+    const videoLeftEl = document.createElement('video');
+    videoLeftEl.src = stereoVideoUrls ? stereoVideoUrls.left : videoUrl!;
+    videoLeftEl.crossOrigin = 'anonymous';
+    videoLeftEl.loop = false;
+    videoLeftEl.playsInline = true;
     
-    video.addEventListener('timeupdate', updateTime);
-    video.addEventListener('loadedmetadata', updateDuration);
-    video.addEventListener('play', onPlay);
-    video.addEventListener('pause', onPause);
-    video.addEventListener('ended', onEnded);
-    audio?.addEventListener('volumechange', onVolumeChange);
+    const videoTextureLeft = new THREE.VideoTexture(videoLeftEl);
 
-    return () => {
-        video.removeEventListener('timeupdate', updateTime);
-        video.removeEventListener('loadedmetadata', updateDuration);
-        video.removeEventListener('play', onPlay);
-        video.removeEventListener('pause', onPause);
-        video.removeEventListener('ended', onEnded);
-        audio?.removeEventListener('volumechange', onVolumeChange);
-    };
-  }, [onVideoEnd, audioUrl]);
-  
-  useEffect(() => {
-    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-  
-    // --- VR Effects and Handlers ---
-  useEffect(() => {
-    if ((navigator as any).xr) {
-        (navigator as any).xr.isSessionSupported('immersive-vr').then((supported: boolean) => {
-            setIsVRSupported(supported);
-        });
+    const screenWidth = 4;
+    const screenHeight = screenWidth * (9 / 16);
+    const screenGeometry = new THREE.PlaneGeometry(screenWidth, screenHeight);
+
+    // Stereo setup
+    const LEFT_LAYER = 1;
+    const RIGHT_LAYER = 2;
+    camera.layers.enable(LEFT_LAYER);
+
+    const materialLeft = new THREE.MeshBasicMaterial({ map: videoTextureLeft });
+    const screenLeft = new THREE.Mesh(screenGeometry, materialLeft);
+    screenLeft.layers.set(LEFT_LAYER);
+    screenLeft.position.set(-0.02, 0, 0); // Slight offset for left eye
+    scene.add(screenLeft);
+    
+    let videoRightEl: HTMLVideoElement, screenRight: THREE.Mesh;
+    if (stereoVideoUrls) {
+        camera.layers.enable(RIGHT_LAYER);
+
+        videoRightEl = document.createElement('video');
+        videoRightEl.src = stereoVideoUrls.right;
+        videoRightEl.crossOrigin = 'anonymous';
+        videoRightEl.loop = false;
+        videoRightEl.playsInline = true;
+        
+        const videoTextureRight = new THREE.VideoTexture(videoRightEl);
+        const materialRight = new THREE.MeshBasicMaterial({ map: videoTextureRight });
+        screenRight = new THREE.Mesh(screenGeometry, materialRight);
+        screenRight.layers.set(RIGHT_LAYER);
+        screenRight.position.set(0.02, 0, 0); // Slight offset for right eye
+        scene.add(screenRight);
     }
-  }, []);
 
-  useEffect(() => {
+    // VR Controls UI
+    const uiCanvas = document.createElement('canvas');
+    uiCanvas.width = 1024;
+    uiCanvas.height = 128;
+    const uiContext = uiCanvas.getContext('2d')!;
+    const uiTexture = new THREE.CanvasTexture(uiCanvas);
+    const uiMaterial = new THREE.MeshBasicMaterial({ map: uiTexture, transparent: true });
+    const uiGeometry = new THREE.PlaneGeometry(screenWidth / 2, (screenWidth / 2) * (128 / 1024));
+    const uiPlane = new THREE.Mesh(uiGeometry, uiMaterial);
+    uiPlane.position.set(0, -screenHeight / 2 - 0.2, -0.5);
+    scene.add(uiPlane);
+    
+    let isSeeking = false;
+    let intersectedObject: THREE.Object3D | null = null;
+    const interactiveObjects = [uiPlane];
+
+    function drawUI() {
+        if (!uiContext) return;
+        const video = videoLeftEl;
+        
+        uiContext.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+        uiContext.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        uiContext.fillRect(0, 0, uiCanvas.width, uiCanvas.height);
+
+        uiContext.fillStyle = intersectedObject?.name === 'play' ? '#818cf8' : '#e2e8f0';
+        uiContext.beginPath();
+        if (video.paused) {
+            uiContext.moveTo(40, 32); uiContext.lineTo(40, 96); uiContext.lineTo(88, 64);
+        } else {
+            uiContext.fillRect(35, 32, 20, 64); uiContext.fillRect(65, 32, 20, 64);
+        }
+        uiContext.closePath();
+        uiContext.fill();
+
+        const seekBarX = 140;
+        const seekBarY = 60;
+        const seekBarWidth = uiCanvas.width - 180 - 140;
+        uiContext.fillStyle = '#475569';
+        uiContext.fillRect(seekBarX, seekBarY, seekBarWidth, 8);
+
+        const progress = (video.currentTime / video.duration) || 0;
+        uiContext.fillStyle = intersectedObject?.name === 'seek' ? '#a5b4fc' : '#4f46e5';
+        uiContext.fillRect(seekBarX, seekBarY, seekBarWidth * progress, 8);
+
+        uiContext.fillStyle = '#e2e8f0';
+        uiContext.font = '32px Inter';
+        const timeText = `${formatTime(video.currentTime)} / ${formatTime(video.duration || 0)}`;
+        uiContext.fillText(timeText, uiCanvas.width - 180, 72);
+        
+        uiTexture.needsUpdate = true;
+    }
+    
+    const raycaster = new THREE.Raycaster();
+    const tempMatrix = new THREE.Matrix4();
+    const controllers = [renderer.xr.getController(0), renderer.xr.getController(1)];
+    
+    controllers.forEach(controller => {
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -5)]));
+        line.scale.z = 5;
+        controller.add(line);
+        scene.add(controller);
+
+        controller.addEventListener('selectstart', () => {
+            if (intersectedObject) {
+                if(intersectedObject.name === 'play') videoLeftEl.paused ? videoLeftEl.play() : videoLeftEl.pause();
+                if(intersectedObject.name === 'seek') isSeeking = true;
+            }
+        });
+        controller.addEventListener('selectend', () => { isSeeking = false; });
+    });
+
+
+    renderer.setAnimationLoop(() => {
+        const session = renderer.xr.getSession();
+        if(!session) return;
+        
+        let controllerWithIntersection: THREE.Object3D | undefined = undefined;
+        
+        controllers.forEach(controller => {
+            tempMatrix.identity().extractRotation(controller.matrixWorld);
+            raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+            raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+            
+            const intersects = raycaster.intersectObjects(interactiveObjects);
+            
+            if (intersects.length > 0) {
+                 controllerWithIntersection = controller;
+                 const point = intersects[0].point;
+                 uiPlane.worldToLocal(point);
+                 
+                 const x = point.x + uiGeometry.parameters.width / 2;
+                 const normalizedX = x / uiGeometry.parameters.width;
+
+                 if (normalizedX > 0.03 && normalizedX < 0.12) {
+                     intersectedObject = { name: 'play' } as THREE.Object3D;
+                 } else if (normalizedX > 0.13 && normalizedX < 0.72) {
+                     intersectedObject = { name: 'seek' } as THREE.Object3D;
+                     if(isSeeking) {
+                         const seekProgress = (normalizedX - 0.13) / (0.72 - 0.13);
+                         videoLeftEl.currentTime = videoLeftEl.duration * seekProgress;
+                     }
+                 } else {
+                     intersectedObject = null;
+                 }
+                 
+            } 
+            ((controller.children[0] as THREE.Line).material as THREE.LineBasicMaterial).color.set(intersects.length > 0 ? 0x818cf8 : 0xffffff);
+        });
+
+        if(!controllerWithIntersection) intersectedObject = null;
+
+        if (videoRightEl) videoRightEl.currentTime = videoLeftEl.currentTime;
+
+        drawUI();
+        renderer.render(scene, camera);
+    });
+
+    renderer.xr.addEventListener('sessionstart', () => {
+        videoLeftEl.play();
+        if(videoRightEl) videoRightEl.play();
+    });
+    
+    renderer.xr.addEventListener('sessionend', () => {
+        videoLeftEl.pause();
+        if(videoRightEl) videoRightEl.pause();
+        handleVideoEndCallback();
+    });
+
     return () => {
-        xrSession?.end();
+      renderer.setAnimationLoop(null);
+      if (vrButtonContainerRef.current && button.parentNode === vrButtonContainerRef.current) {
+        vrButtonContainerRef.current.removeChild(button);
+      }
+      renderer.dispose();
     };
-  }, [xrSession]);
-
-  const createVideoElement = (videoSrc: string) => {
-      const video = document.createElement('video');
-      video.src = videoSrc;
-      video.crossOrigin = 'anonymous';
-      video.loop = true;
-      video.muted = true;
-      video.playsInline = true;
-      return video;
-  }
-
-  const initWebGLProgram = (gl: WebGLRenderingContext) => {
-      const vertexShader = gl.createShader(gl.VERTEX_SHADER)!;
-      gl.shaderSource(vertexShader, vertexShaderSource);
-      gl.compileShader(vertexShader);
-
-      const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER)!;
-      gl.shaderSource(fragmentShader, fragmentShaderSource);
-      gl.compileShader(fragmentShader);
-
-      const program = gl.createProgram()!;
-      gl.attachShader(program, vertexShader);
-      gl.attachShader(program, fragmentShader);
-      gl.linkProgram(program);
-      gl.useProgram(program);
-
-      return program;
-  };
+  }, [videoUrl, stereoVideoUrls, handleVideoEndCallback]);
   
-  const initBuffers = (gl: WebGLRenderingContext) => {
-      const screenWidth = 2;
-      const screenHeight = screenWidth * (9/16);
-      const positions = [ -screenWidth/2,-screenHeight/2,-2.5,  screenWidth/2,-screenHeight/2,-2.5, -screenWidth/2, screenHeight/2,-2.5, -screenWidth/2, screenHeight/2,-2.5,  screenWidth/2,-screenHeight/2,-2.5,  screenWidth/2, screenHeight/2,-2.5 ];
-      positionBufferRef.current = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBufferRef.current);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-
-      const texcoords = [0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0];
-      texcoordBufferRef.current = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBufferRef.current);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
-  };
-
-  const initTexture = (gl: WebGLRenderingContext) => {
-      const texture = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      return texture;
-  }
-
-  const onSessionStarted = async (session: any) => {
-      setXRSession(session);
-      
-      const canvas = vrCanvasRef.current!;
-      const gl = canvas.getContext('webgl', { xrCompatible: true })! as WebGLRenderingContext;
-      glRef.current = gl;
-
-      await (gl as any).makeXRCompatible();
-      session.updateRenderState({ baseLayer: new (window as any).XRWebGLLayer(session, gl) });
-      
-      xrRefSpaceRef.current = await session.requestReferenceSpace('local');
-      programRef.current = initWebGLProgram(gl);
-      initBuffers(gl);
-
-      const mainVideo = videoRef.current;
-      if (!mainVideo) {
-          console.error("Main video element not found for VR session.");
-          session.end();
-          return;
-      }
-      mainVideo.loop = true; 
-      
-      videoTextureLeftRef.current = initTexture(gl);
-      
-      if (stereoVideoUrls) {
-          videoRefRight.current = createVideoElement(stereoVideoUrls.right);
-          videoTextureRightRef.current = initTexture(gl);
-      }
-      
-      mainVideo.play();
-      videoRefRight.current?.play();
-      audioRef.current?.play();
-
-      session.requestAnimationFrame(onXRFrame);
-  };
-
-  const onXRFrame = (time: number, frame: any) => {
-      const session = frame.session;
-      session.requestAnimationFrame(onXRFrame);
-
-      const gl = glRef.current!;
-      const program = programRef.current!;
-      
-      const baseLayer = session.renderState.baseLayer;
-      gl.bindFramebuffer(gl.FRAMEBUFFER, baseLayer.framebuffer);
-
-      gl.clearColor(0.1, 0.1, 0.1, 1.0);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-      const pose = frame.getViewerPose(xrRefSpaceRef.current);
-      if (!pose) return;
-      
-      const videoLeft = videoRef.current;
-      const videoRight = videoRefRight.current;
-
-      if (videoRight && videoLeft) {
-          videoRight.currentTime = videoLeft.currentTime;
-      }
-      if (audioRef.current && videoLeft) {
-          audioRef.current.currentTime = videoLeft.currentTime;
-      }
-
-      const positionAttribLocation = gl.getAttribLocation(program, 'a_position');
-      const texcoordAttribLocation = gl.getAttribLocation(program, 'a_texcoord');
-      const matrixUniformLocation = gl.getUniformLocation(program, 'u_matrix');
-
-      for (const view of pose.views) {
-          const viewport = baseLayer.getViewport(view);
-          gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-
-          gl.enableVertexAttribArray(positionAttribLocation);
-          gl.bindBuffer(gl.ARRAY_BUFFER, positionBufferRef.current);
-          gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0);
-
-          gl.enableVertexAttribArray(texcoordAttribLocation);
-          gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBufferRef.current);
-          gl.vertexAttribPointer(texcoordAttribLocation, 2, gl.FLOAT, false, 0, 0);
-          
-          let videoElement: HTMLVideoElement | null = null;
-          let texture: WebGLTexture | null = null;
-
-          if (stereoVideoUrls && view.eye === 'right') {
-              videoElement = videoRight;
-              texture = videoTextureRightRef.current;
-          } else {
-              videoElement = videoLeft;
-              texture = videoTextureLeftRef.current;
-          }
-
-          if (videoElement && videoElement.readyState >= videoElement.HAVE_CURRENT_DATA) {
-              gl.bindTexture(gl.TEXTURE_2D, texture);
-              gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoElement);
-          }
-
-          gl.uniformMatrix4fv(matrixUniformLocation, false, view.projectionMatrix);
-          gl.drawArrays(gl.TRIANGLES, 0, 6);
-      }
-  };
-
-  const startVRSession = async () => {
-      if (!videoUrl) return;
-      try {
-          const session = await (navigator as any).xr.requestSession('immersive-vr', {
-              optionalFeatures: ['local-floor', 'bounded-floor']
-          });
-          session.addEventListener('end', () => {
-              setXRSession(null);
-              if (videoRef.current) {
-                  videoRef.current.loop = false;
-              }
-              videoRefRight.current?.pause();
-              videoRefRight.current = null;
-          });
-          onSessionStarted(session);
-      } catch (e) {
-          console.error("Failed to start VR session:", e);
-      }
-  };
-
-  const getTrackStyle = (value: number, max: number) => {
-    const progress = max > 0 ? (value / max) * 100 : 0;
-    return {
-      background: `linear-gradient(to right, #4f46e5 ${progress}%, #ffffff33 ${progress}%)`
-    };
-  };
+  const showVideo = !!(videoUrl || stereoVideoUrls);
 
   return (
-    <>
-      {xrSession && <canvas ref={vrCanvasRef} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 100 }} />}
-      <div 
-          ref={containerRef}
-          className="w-full h-full relative"
-          onMouseEnter={showControls}
-          onMouseLeave={hideControls}
-          onMouseMove={handleMouseMove}
-      >
-        {isLoading && (
-          <div className="absolute inset-0 z-10 border-4 border-brand-primary rounded-lg animate-pulse-border pointer-events-none"></div>
-        )}
-        {videoUrl ? (
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="w-full h-full relative">
+        {showVideo ? (
           <video
             ref={videoRef}
-            key={videoUrl}
-            src={videoUrl}
+            src={videoUrl ?? stereoVideoUrls?.left}
             className="w-full h-full object-contain"
-            muted
+            autoPlay
             playsInline
-            crossOrigin="anonymous"
+            controls={false}
           />
-        ) : (
-          frameUrl && <img src={frameUrl} alt="Current frame" className="w-full h-full object-contain" />
-        )}
-        {audioUrl && (
-            <audio ref={audioRef} src={audioUrl} loop />
-        )}
-        <canvas ref={canvasRef} className="hidden"></canvas>
+        ) : frameUrl ? (
+          <img src={frameUrl} alt="Current scene" className="w-full h-full object-contain" />
+        ) : null}
         
-        {isVRSupported && videoUrl && !xrSession && (
-          <button
-            onClick={startVRSession}
-            className="absolute bottom-16 right-4 z-20 px-4 py-2 bg-black bg-opacity-60 text-white font-bold rounded-lg hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all transform hover:scale-105"
-          >
-            View in VR
-          </button>
-        )}
+        {audioUrl && <audio ref={audioRef} src={audioUrl} autoPlay loop />}
         
-        {videoUrl && (
-          <div className={`absolute bottom-0 left-0 right-0 p-2 md:p-4 bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-300 z-20 ${areControlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            <input
-                  type="range"
-                  min={0}
-                  max={duration || 0}
-                  step="any"
-                  value={currentTime}
-                  onChange={handleSeek}
-                  style={getTrackStyle(currentTime, duration)}
-                  className="w-full h-1.5 rounded-lg appearance-none cursor-pointer range-thumb"
-                  aria-label="Seek"
-              />
-
-              <div className="flex items-center justify-between text-white mt-2">
-                  <div className="flex items-center gap-2 md:gap-4">
-                      <button onClick={togglePlay} aria-label={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? <PauseIcon/> : <PlayIcon/>}</button>
-                      
-                      <div className="flex items-center gap-2 group">
-                          <button onClick={toggleMute} aria-label={isMuted ? 'Unmute' : 'Mute'}>
-                              {(isMuted || volume === 0) ? <VolumeOffIcon/> : <VolumeHighIcon/>}
-                          </button>
-                          <input
-                              type="range"
-                              min="0"
-                              max="1"
-                              step="any"
-                              value={isMuted ? 0 : volume}
-                              onChange={handleVolumeChange}
-                              style={getTrackStyle(isMuted ? 0 : volume, 1)}
-                              className="w-0 group-hover:w-24 h-1.5 rounded-lg appearance-none cursor-pointer transition-all duration-300 range-thumb"
-                              aria-label="Volume"
-                          />
-                      </div>
-
-                      <span className="text-xs md:text-sm font-mono">{formatTime(currentTime)} / {formatTime(duration)}</span>
-                  </div>
-                  
-                  <button onClick={toggleFullscreen} aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}>
-                      {isFullscreen ? <FullscreenExitIcon/> : <FullscreenEnterIcon/>}
-                  </button>
-              </div>
-          </div>
-        )}
+        <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
+            <SaveWorldButton onClick={onSave} isDisabled={!isReady} />
+            <AudioControl onGenerateAudio={onAddAmbiance} isGenerating={isGeneratingAudio} isDisabled={!isReady} audioDescription={audioDescription} />
+        </div>
+        <div className="absolute bottom-24 left-4 z-10">
+            <DownloadButton videoUrl={videoUrl ?? stereoVideoUrls?.left} isDisabled={!showVideo} isStereo={isStereo} />
+        </div>
+        <div ref={vrButtonContainerRef} />
       </div>
-    </>
+    </div>
   );
 };
 

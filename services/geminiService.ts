@@ -19,10 +19,18 @@ const base64ToParts = (base64: string) => {
 };
 
 
-export const generateInitialImage = async (prompt: string): Promise<string> => {
+export const generateInitialImage = async (prompt: string, styleReferenceImage?: string | null): Promise<string> => {
+    const { mimeType, data } = styleReferenceImage ? base64ToParts(styleReferenceImage) : { mimeType: null, data: null };
+
     const response = await ai.models.generateImages({
         model: 'imagen-4.0-generate-001',
         prompt: prompt,
+        ...(styleReferenceImage && data && mimeType && {
+            image: {
+                imageBytes: data,
+                mimeType: mimeType,
+            }
+        }),
         config: {
           numberOfImages: 1,
           outputMimeType: 'image/jpeg',
@@ -37,24 +45,28 @@ export const generateInitialImage = async (prompt: string): Promise<string> => {
 };
 
 
-export const editImage = async (base64Image: string, prompt: string): Promise<string> => {
-    const { mimeType, data } = base64ToParts(base64Image);
+export const editImage = async (base64Image: string, prompt: string, styleReferenceImage?: string | null): Promise<string> => {
+    const mainImageParts = base64ToParts(base64Image);
+    const styleImageParts = styleReferenceImage ? base64ToParts(styleReferenceImage) : null;
+    
+    // Fix: Explicitly type the 'parts' array to allow both image ({inlineData: ...}) and text ({text: ...}) parts.
+    // TypeScript was inferring the type from only the first element, causing an error when a text part was pushed.
+    const parts: ({ inlineData: { data: string; mimeType: string; }; } | { text: string; })[] = [
+        { inlineData: { data: mainImageParts.data, mimeType: mainImageParts.mimeType } },
+    ];
+    
+    let textPrompt = prompt;
+
+    if (styleImageParts) {
+        parts.push({ inlineData: { data: styleImageParts.data, mimeType: styleImageParts.mimeType } });
+        textPrompt = `${prompt}. Important: Strictly adhere to the artistic style of the second image provided.`;
+    }
+    
+    parts.push({ text: textPrompt });
 
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
-        contents: {
-            parts: [
-                {
-                    inlineData: {
-                        data: data,
-                        mimeType: mimeType,
-                    },
-                },
-                {
-                    text: prompt,
-                },
-            ],
-        },
+        contents: { parts: parts },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
         },
@@ -134,7 +146,8 @@ export const generateNextVideo = async (
     lastFrameBase64: string, 
     action: CameraAction,
     animationPrompt: string | undefined,
-    updateLoadingMessage: (message: string) => void
+    updateLoadingMessage: (message: string) => void,
+    isStyleLocked: boolean,
 ): Promise<string> => {
     const { mimeType, data } = base64ToParts(lastFrameBase64);
     
@@ -143,7 +156,7 @@ export const generateNextVideo = async (
 
     let operation = await ai.models.generateVideos({
         model: 'veo-2.0-generate-001',
-        prompt: VEO_PROMPT_TEMPLATE(action, animationPrompt),
+        prompt: VEO_PROMPT_TEMPLATE(action, animationPrompt, isStyleLocked),
         image: {
             imageBytes: data,
             mimeType: mimeType,
@@ -184,9 +197,11 @@ export const generateStereoVideo = async (
     leftEyeFrameBase64: string,
     action: CameraAction,
     animationPrompt: string | undefined,
-    updateLoadingMessage: (message: string) => void
+    updateLoadingMessage: (message: string) => void,
+    isStyleLocked: boolean,
 ): Promise<{ left: string; right: string; }> => {
     updateLoadingMessage("Generating right eye perspective...");
+    // Pass the style lock down to the editImage call implicitly by not providing a separate style image
     const rightEyeFrameBase64 = await editImage(
         leftEyeFrameBase64,
         "Generate a stereoscopic right-eye view for this image, creating a slight horizontal offset for 3D depth. Do not change the content, style, or composition of the image."
@@ -195,8 +210,8 @@ export const generateStereoVideo = async (
     updateLoadingMessage("Generating stereo video streams...");
 
     const [leftVideoUrl, rightVideoUrl] = await Promise.all([
-        generateNextVideo(leftEyeFrameBase64, action, animationPrompt, () => {}),
-        generateNextVideo(rightEyeFrameBase64, action, animationPrompt, () => {})
+        generateNextVideo(leftEyeFrameBase64, action, animationPrompt, () => {}, isStyleLocked),
+        generateNextVideo(rightEyeFrameBase64, action, animationPrompt, () => {}, isStyleLocked)
     ]);
 
     return { left: leftVideoUrl, right: rightVideoUrl };

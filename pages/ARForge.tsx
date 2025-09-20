@@ -5,12 +5,12 @@ import ARControls from '../components/ARControls';
 import { AnchorPoint, Transform } from '../types';
 import { DEFAULT_TRANSFORM } from '../constants';
 import ModelGenerator from '../components/ModelGenerator';
-import { generate3DModel } from '../services/geminiService';
+import { generate3DModel, generateArTutorial } from '../services/geminiService';
+import TutorialModal from '../components/TutorialModal';
 
 const ARForge: React.FC = () => {
     const [modelFile, setModelFile] = useState<File | null>(null);
     const [modelSrc, setModelSrc] = useState<string | null>(null);
-    const [isCameraOn, setIsCameraOn] = useState<boolean>(false);
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [error, setError] = useState<string | null>(null);
     
@@ -18,27 +18,20 @@ const ARForge: React.FC = () => {
     const [transform, setTransform] = useState<Transform>(DEFAULT_TRANSFORM);
     const [anchorPoint, setAnchorPoint] = useState<AnchorPoint>('head');
     
-    const [assetSourceTab, setAssetSourceTab] = useState<'upload' | 'generate'>('upload');
+    const [assetSourceTab, setAssetSourceTab] = useState<'generate' | 'upload'>('generate');
     const [generationPrompt, setGenerationPrompt] = useState<string>('a sci-fi astronaut helmet');
     const [isGeneratingModel, setIsGeneratingModel] = useState<boolean>(false);
     const [generationImage, setGenerationImage] = useState<File | null>(null);
     const [generationImagePreview, setGenerationImagePreview] = useState<string | null>(null);
     const generationImagePreviewRef = useRef<string | null>(null);
-
-
-    const videoRef = useRef<HTMLVideoElement>(null);
-
-    useEffect(() => {
-        if (videoRef.current && stream) {
-            videoRef.current.srcObject = stream;
-        }
-    }, [stream]);
     
+    const [tutorialContent, setTutorialContent] = useState<string | null>(null);
+    const [tutorialTitle, setTutorialTitle] = useState<string>('');
+    const [isGeneratingTutorial, setIsGeneratingTutorial] = useState<boolean>(false);
+
     useEffect(() => {
+        // Stop camera stream on component unmount or when exiting live mode
         return () => {
-            if (generationImagePreviewRef.current) {
-                URL.revokeObjectURL(generationImagePreviewRef.current);
-            }
             stream?.getTracks().forEach(track => track.stop());
         }
     }, [stream]);
@@ -58,42 +51,33 @@ const ARForge: React.FC = () => {
             }
         }
     };
-
-    const handleCameraToggle = async () => {
-        if (isCameraOn) {
-            stream?.getTracks().forEach(track => track.stop());
-            setStream(null);
-            setIsCameraOn(false);
-        } else {
-            try {
-                const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                setStream(mediaStream);
-                setIsCameraOn(true);
-                setError(null);
-            } catch (err) {
-                console.error("Camera access denied:", err);
-                setError("Camera access was denied. Please allow camera permissions in your browser settings.");
-                setIsCameraOn(false);
-            }
+    
+    const handleStartLivePreview = async () => {
+        if (!modelFile) {
+            setError("Please upload or generate a 3D model first.");
+            return;
         }
-    };
-
-    const handleMerge = () => {
-        if (modelFile && stream) {
+        try {
+            const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            setStream(mediaStream);
             setArMode('live');
+            setError(null);
+        } catch (err) {
+            console.error("Camera access denied:", err);
+            setError("Camera access was denied. Please allow camera permissions in your browser settings.");
         }
     };
 
     const handleExitLiveMode = () => {
+        stream?.getTracks().forEach(track => track.stop());
+        setStream(null);
         setArMode('setup');
     };
     
      const handleGenerationImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            if (generationImagePreviewRef.current) {
-                URL.revokeObjectURL(generationImagePreviewRef.current);
-            }
+            if (generationImagePreviewRef.current) URL.revokeObjectURL(generationImagePreviewRef.current);
             const newPreviewUrl = URL.createObjectURL(file);
             setGenerationImage(file);
             setGenerationImagePreview(newPreviewUrl);
@@ -103,10 +87,7 @@ const ARForge: React.FC = () => {
 
     const handleClearGenerationImage = () => {
         setGenerationImage(null);
-        if (generationImagePreviewRef.current) {
-            URL.revokeObjectURL(generationImagePreviewRef.current);
-            generationImagePreviewRef.current = null;
-        }
+        if (generationImagePreviewRef.current) URL.revokeObjectURL(generationImagePreviewRef.current);
         setGenerationImagePreview(null);
     };
 
@@ -121,44 +102,81 @@ const ARForge: React.FC = () => {
     
     const handleGenerateModel = async () => {
         if (!generationPrompt.trim() || isGeneratingModel) return;
-
         setIsGeneratingModel(true);
         setError(null);
         setModelFile(null);
         setModelSrc(null);
-
         try {
             const imageB64 = generationImage ? await fileToBase64(generationImage) : undefined;
             const { url, name } = await generate3DModel(generationPrompt, imageB64);
-            
             const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch generated model: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`Failed to fetch generated model: ${response.statusText}`);
             const blob = await response.blob();
             const file = new File([blob], name, { type: blob.type });
-
             setModelFile(file);
             const objectUrl = URL.createObjectURL(file);
             setModelSrc(objectUrl);
             handleClearGenerationImage();
-
         } catch (err) {
             console.error("Model generation failed:", err);
-            const message = err instanceof Error ? err.message : "An unknown error occurred during model generation.";
-            setError(message);
+            setError(err instanceof Error ? err.message : "An unknown error occurred during model generation.");
         } finally {
             setIsGeneratingModel(false);
         }
     };
     
+    const handleGenerateTutorial = async (platform: 'instagram' | 'snapchat') => {
+        if (!modelFile) {
+            setError("Please generate or upload a model before creating a tutorial.");
+            return;
+        }
+        setIsGeneratingTutorial(true);
+        setError(null);
+        setTutorialContent(null);
+        try {
+            const content = await generateArTutorial(platform, modelFile.name);
+            setTutorialContent(content);
+            setTutorialTitle(platform === 'instagram' ? 'Instagram Filter Guide' : 'Snapchat Lens Guide');
+        } catch (err) {
+            console.error("Tutorial generation failed:", err);
+            setError(err instanceof Error ? err.message : `Failed to generate tutorial: ${err}`);
+        } finally {
+            setIsGeneratingTutorial(false);
+        }
+    };
+    
+    if (arMode === 'live' && modelFile && stream) {
+        return (
+            <div className="w-full h-full flex-grow flex items-center justify-center relative bg-black animate-fadeIn">
+                <ARPreview modelFile={modelFile} stream={stream} transform={transform} anchorPoint={anchorPoint} setTransform={setTransform} />
+                <ARControls 
+                    transform={transform} 
+                    setTransform={setTransform} 
+                    anchorPoint={anchorPoint} 
+                    setAnchorPoint={setAnchorPoint} 
+                    onExit={handleExitLiveMode}
+                    onGenerateTutorial={handleGenerateTutorial}
+                    isGeneratingTutorial={isGeneratingTutorial}
+                />
+                <button 
+                    onClick={handleExitLiveMode}
+                    className="absolute top-4 right-4 z-30 px-4 py-2 bg-black/60 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors"
+                    aria-label="Exit Live Preview"
+                >
+                    Exit
+                </button>
+                 {tutorialContent && <TutorialModal title={tutorialTitle} content={tutorialContent} onClose={() => setTutorialContent(null)} />}
+            </div>
+        );
+    }
+
     const TabButton: React.FC<{label: string, isActive: boolean, onClick: () => void}> = ({ label, isActive, onClick }) => (
          <button
             onClick={onClick}
-            className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors border-b-2 ${
+            className={`px-4 py-2 font-semibold transition-colors border-b-2 ${
                 isActive 
                 ? 'border-brand-primary text-white'
-                : 'border-transparent text-gray-400 hover:text-white'
+                : 'border-transparent text-slate-400 hover:text-white'
             }`}
             role="tab"
             aria-selected={isActive}
@@ -167,58 +185,29 @@ const ARForge: React.FC = () => {
         </button>
     );
 
-    const isMergeReady = modelSrc !== null && isCameraOn;
-
-    if (arMode === 'live' && modelFile && stream) {
-        return (
-            <main className="w-full max-w-7xl flex-grow flex flex-col md:flex-row items-center gap-4 animate-fadeIn">
-                <ARPreview modelFile={modelFile} stream={stream} transform={transform} anchorPoint={anchorPoint} setTransform={setTransform} />
-                <ARControls transform={transform} setTransform={setTransform} anchorPoint={anchorPoint} setAnchorPoint={setAnchorPoint} onExit={handleExitLiveMode} />
-            </main>
-        );
-    }
-
     return (
-        <main className="w-full max-w-7xl flex-grow flex flex-col items-center gap-4 animate-fadeIn">
-            <h2 className="text-3xl font-bold text-brand-text tracking-tight">AI AR Filter Forge</h2>
-            <p className="text-md text-brand-text-secondary">Design and test your AR filters in real-time.</p>
-
-            {error && (
-                 <div className="w-full bg-red-800 border border-red-600 text-white px-4 py-2 rounded-md text-sm" role="alert">
-                    <p>{error}</p>
-                 </div>
-            )}
-            <div className="w-full flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                <div className="bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col min-h-[480px]">
-                    <div className="flex justify-between items-center">
-                        <h3 className="text-xl font-semibold text-brand-text">1. Asset Workshop</h3>
-                         {isGeneratingModel && (
-                           <div className="flex items-center gap-2 text-sm text-brand-text-secondary">
-                                <div className="w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
-                                <span>Generating...</span>
-                           </div>
-                        )}
-                    </div>
-                    <div className="flex border-b border-gray-700 mt-2">
-                        <TabButton label="Upload Model" isActive={assetSourceTab === 'upload'} onClick={() => setAssetSourceTab('upload')} />
+        <div className="w-full h-full flex-grow flex items-center justify-center p-4 sm:p-6 lg:p-8 animate-fadeIn">
+            <div className="w-full h-full max-w-7xl flex flex-col md:flex-row gap-8">
+                {/* Left Side: Controls */}
+                <div className="w-full md:w-[350px] flex-shrink-0 flex flex-col bg-brand-dark-secondary rounded-2xl p-6">
+                    <h2 className="text-xl font-bold text-white tracking-tight">AR Filter Forge</h2>
+                    
+                    <div className="mt-4 border-b border-slate-700">
                         <TabButton label="Generate Model (AI)" isActive={assetSourceTab === 'generate'} onClick={() => setAssetSourceTab('generate')} />
+                        <TabButton label="Upload Model" isActive={assetSourceTab === 'upload'} onClick={() => setAssetSourceTab('upload')} />
                     </div>
                     
-                    <div className="flex-shrink-0 pt-4">
-                        {assetSourceTab === 'upload' && (
-                            <div className="flex flex-col gap-4">
-                                <p className="text-sm text-brand-text-secondary">Upload a 3D model (.glb or .gltf) to begin.</p>
-                                <div className="flex items-center gap-4">
-                                    <label htmlFor="file-upload" className="cursor-pointer px-5 py-2 bg-brand-primary text-white font-bold rounded-lg hover:bg-blue-600">
-                                        Choose File
-                                    </label>
-                                    <input id="file-upload" type="file" accept=".glb,.gltf" onChange={handleFileChange} className="hidden" />
-                                    {modelFile && <span className="text-sm text-brand-text-secondary">{modelFile.name}</span>}
-                                </div>
+                    <div className="py-4 flex-grow">
+                        {assetSourceTab === 'upload' ? (
+                            <div className="flex flex-col gap-4 h-full justify-center">
+                                <p className="text-sm text-slate-400">Upload a 3D model (.glb or .gltf).</p>
+                                <label htmlFor="file-upload" className="cursor-pointer w-full text-center px-5 py-3 bg-slate-700 text-white font-bold rounded-lg hover:bg-slate-600 transition-colors">
+                                    {modelFile ? `Selected: ${modelFile.name}` : 'Choose File'}
+                                </label>
+                                <input id="file-upload" type="file" accept=".glb,.gltf" onChange={handleFileChange} className="hidden" />
                             </div>
-                        )}
-                        {assetSourceTab === 'generate' && (
-                           <ModelGenerator 
+                        ) : (
+                            <ModelGenerator 
                                 prompt={generationPrompt}
                                 setPrompt={setGenerationPrompt}
                                 onGenerate={handleGenerateModel}
@@ -226,53 +215,41 @@ const ARForge: React.FC = () => {
                                 imagePreview={generationImagePreview}
                                 onImageChange={handleGenerationImageChange}
                                 onClearImage={handleClearGenerationImage}
-                           />
+                            />
                         )}
                     </div>
-                    
-                    <div className="mt-4 flex-grow w-full h-full bg-brand-dark rounded-md min-h-[200px]">
-                        {modelSrc ? (
-                            <ModelViewer src={modelSrc} fileName={modelFile?.name || 'model'} />
-                        ) : (
-                            <div className="w-full h-full border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center">
-                                <p className="text-brand-text-secondary">{isGeneratingModel ? 'AI is creating your model...' : '3D model preview'}</p>
+                     <div className="mt-auto pt-4 border-t border-slate-700">
+                         {error && (
+                            <div className="w-full bg-red-900/50 border border-red-700 text-white px-3 py-2 rounded-md text-xs mb-4" role="alert">
+                                <p>{error}</p>
                             </div>
                         )}
+                         <button
+                            onClick={handleStartLivePreview}
+                            disabled={!modelSrc}
+                            className="w-full px-8 py-3 bg-brand-primary text-white font-bold rounded-lg text-md hover:bg-indigo-500 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all transform hover:scale-105"
+                            title={!modelSrc ? "Upload or generate a model to enable" : "Start Live Preview"}
+                        >
+                            Start Live Preview
+                        </button>
                     </div>
                 </div>
 
-                <div className="bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col min-h-[480px]">
-                    <h3 className="text-xl font-semibold mb-2 text-brand-text">2. Live Preview</h3>
-                    <p className="text-sm text-brand-text-secondary mb-4">Start your camera to see your live feed.</p>
-                     <div className="flex-grow w-full h-full bg-black rounded-md flex items-center justify-center relative">
-                        <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover rounded-md ${isCameraOn ? 'block' : 'hidden'}`} />
-                        {!isCameraOn && (
-                            <div className="text-center">
-                                 <p className="text-brand-text-secondary mb-4">Camera is off</p>
-                                 <button onClick={handleCameraToggle} className="px-5 py-2 bg-brand-primary text-white font-bold rounded-lg hover:bg-blue-600">
-                                     Start Camera
-                                 </button>
-                            </div>
-                        )}
-                        {isCameraOn && (
-                             <button onClick={handleCameraToggle} className="absolute bottom-4 left-4 z-10 px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">
-                                Stop Camera
-                             </button>
-                        )}
-                    </div>
+                {/* Right Side: Preview Area */}
+                <div className="w-full flex-grow bg-black/50 rounded-2xl flex items-center justify-center relative border-2 border-dashed border-slate-800">
+                    {modelSrc ? (
+                        <ModelViewer src={modelSrc} fileName={modelFile?.name || 'model'} />
+                    ) : (
+                        <div className="text-center text-slate-500 p-8">
+                            <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 004.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5v-5.714c0-.597-.237-1.17-.659-1.591L14.25 3.104 9.75 3.104 5 7.199 5 14.5M19 14.5l-1.414-1.414a2.25 2.25 0 00-3.182 0L12 15.5l-1.414-1.414a2.25 2.25 0 00-3.182 0L5 14.5m14 0l-6 6m-6-6l6 6" /></svg>
+                            <p className="mt-4 font-semibold">Preview</p>
+                            <p className="text-sm">{isGeneratingModel ? 'AI is creating your 3D model...' : 'Your 3D model preview will appear here'}</p>
+                        </div>
+                    )}
                 </div>
             </div>
-             <div className="w-full flex justify-center py-4">
-                <button
-                    onClick={handleMerge}
-                    disabled={!isMergeReady}
-                    className="px-8 py-4 bg-green-600 text-white font-bold rounded-lg text-lg hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-all transform hover:scale-105"
-                    title={!isMergeReady ? "Upload a model and start your camera to enable" : "Combine asset and camera feed"}
-                >
-                    Merge to Live Preview
-                </button>
-            </div>
-        </main>
+            {tutorialContent && <TutorialModal title={tutorialTitle} content={tutorialContent} onClose={() => setTutorialContent(null)} />}
+        </div>
     );
 };
 

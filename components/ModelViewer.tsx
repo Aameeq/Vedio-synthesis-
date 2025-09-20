@@ -6,8 +6,9 @@ import React from 'react';
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      // Fix: Use React.DetailedHTMLProps for a more correct and robust type definition for custom elements, which aligns with how standard HTML elements are typed in React.
-      'model-viewer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+      // Fix: Correctly type the custom element by intersecting React's HTMLAttributes
+      // with the specific properties for model-viewer. This resolves the type error.
+      'model-viewer': React.HTMLAttributes<HTMLElement> & {
         src?: string;
         alt?: string;
         cameraControls?: boolean;

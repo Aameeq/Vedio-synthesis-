@@ -7,21 +7,15 @@ interface StereoToggleProps {
 }
 
 const StereoToggle: React.FC<StereoToggleProps> = ({ isEnabled, onToggle, isDisabled }) => {
-  const toggleClasses = `w-14 h-8 flex items-center rounded-full p-1 transition-colors duration-300 ease-in-out ${
-    isEnabled ? 'bg-brand-primary' : 'bg-gray-600'
+  const toggleClasses = `w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ease-in-out ${
+    isEnabled ? 'bg-brand-primary' : 'bg-slate-700/50'
   } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`;
-  const knobClasses = `bg-white w-6 h-6 rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${
-    isEnabled ? 'translate-x-6' : ''
+  const knobClasses = `bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${
+    isEnabled ? 'translate-x-5' : ''
   }`;
 
   return (
-    <div className="flex items-center gap-4 mt-4">
-      <label
-        htmlFor="stereo-toggle"
-        className={`font-semibold text-brand-text-secondary ${isDisabled ? 'opacity-50' : ''}`}
-      >
-        Generate in 3D (for VR)
-      </label>
+    <div className="flex flex-col items-center gap-1">
       <button
         id="stereo-toggle"
         role="switch"
@@ -29,6 +23,7 @@ const StereoToggle: React.FC<StereoToggleProps> = ({ isEnabled, onToggle, isDisa
         onClick={() => !isDisabled && onToggle(!isEnabled)}
         disabled={isDisabled}
         className={toggleClasses}
+        title="Generate Stereoscopic 3D for VR"
       >
         <div className={knobClasses} />
       </button>

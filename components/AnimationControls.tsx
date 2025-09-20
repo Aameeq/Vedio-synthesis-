@@ -8,19 +8,17 @@ interface AnimationControlsProps {
 
 const AnimationControls: React.FC<AnimationControlsProps> = ({ prompt, setPrompt, isDisabled }) => {
   return (
-    <div className="w-full flex flex-col items-center gap-2 text-center">
-      <label htmlFor="animation-prompt-input" className="text-sm font-semibold text-brand-text-secondary self-start">
-        Scene Animation
-      </label>
+    <div className="relative">
       <input
         id="animation-prompt-input"
         type="text"
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        placeholder="e.g., 'make the clouds drift'"
+        placeholder="Scene Animation..."
         disabled={isDisabled}
-        className="w-full bg-gray-700 border-2 border-gray-600 text-brand-text rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all disabled:opacity-50"
+        className="w-52 h-12 px-5 bg-slate-700/50 border border-transparent text-slate-300 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all disabled:opacity-50 text-center text-sm placeholder:text-slate-400"
         aria-label="Scene animation prompt"
+        title="Describe animation in the scene (e.g., clouds drift slowly)"
       />
     </div>
   );

@@ -18,7 +18,6 @@ const App: React.FC = () => {
       }
     };
 
-    // Set initial route
     handleHashChange();
 
     window.addEventListener('hashchange', handleHashChange);
@@ -32,7 +31,6 @@ const App: React.FC = () => {
   };
 
   const handleLibraryClick = () => {
-    // This event is listened to by WorldBuilder.tsx to open the modal
     document.dispatchEvent(new CustomEvent('open-library'));
   };
 
@@ -47,9 +45,11 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-brand-dark flex flex-col items-center p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="h-screen bg-brand-dark flex flex-col font-sans text-slate-200">
       <Header currentRoute={route} onNavigate={navigate} onLibraryClick={handleLibraryClick} />
-      {renderPage()}
+      <main className="w-full flex-grow flex flex-col overflow-hidden">
+        {renderPage()}
+      </main>
     </div>
   );
 };

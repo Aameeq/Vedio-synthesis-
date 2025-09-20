@@ -10,22 +10,22 @@ interface ModeToggleProps {
 const ModeToggle: React.FC<ModeToggleProps> = ({ currentMode, onModeChange, isDisabled }) => {
   const getButtonClasses = (mode: AppMode) => {
     const isActive = currentMode === mode;
-    return `px-6 py-2 text-sm font-bold rounded-full transition-all duration-200 transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-brand-primary ${
+    return `w-32 py-3 text-sm font-bold rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark-secondary focus:ring-brand-primary ${
       isActive
-        ? 'bg-brand-primary text-white scale-105 shadow-md'
-        : 'bg-gray-700 text-brand-text-secondary hover:bg-gray-600 hover:scale-105'
+        ? 'bg-brand-primary text-white shadow-md'
+        : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/70'
     } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`;
   };
 
   return (
-    <div className="flex items-center justify-center p-1 bg-gray-800 rounded-full">
+    <div className="flex items-center justify-center p-1 bg-black/30 rounded-full gap-1">
       <button
         onClick={() => onModeChange(AppMode.CAMERA)}
         disabled={isDisabled}
         className={getButtonClasses(AppMode.CAMERA)}
         aria-pressed={currentMode === AppMode.CAMERA}
       >
-        Camera
+        Camera Mode
       </button>
       <button
         onClick={() => onModeChange(AppMode.EDIT)}
@@ -33,7 +33,7 @@ const ModeToggle: React.FC<ModeToggleProps> = ({ currentMode, onModeChange, isDi
         className={getButtonClasses(AppMode.EDIT)}
         aria-pressed={currentMode === AppMode.EDIT}
       >
-        Edit
+        Edit Mode
       </button>
     </div>
   );

@@ -7,7 +7,7 @@ interface ControlsProps {
 }
 
 const SvgIcon: React.FC<{ path: string }> = ({ path }) => (
-    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <path d={path} />
     </svg>
 );
@@ -18,33 +18,31 @@ const ControlButton: React.FC<{
     onAction: (action: CameraAction) => void;
     isDisabled: boolean;
     iconPath: string;
-    gridClass: string;
-}> = ({ label, action, onAction, isDisabled, iconPath, gridClass }) => (
+}> = ({ label, action, onAction, isDisabled, iconPath }) => (
     <button
         onClick={() => onAction(action)}
         disabled={isDisabled}
-        className={`flex flex-col items-center justify-center p-2 bg-gray-700 text-brand-text-secondary rounded-lg border-2 border-gray-600 transition-all duration-150 ease-in-out ${
-            isDisabled
-                ? 'opacity-50 cursor-not-allowed'
-                : 'hover:bg-gray-600 hover:border-brand-primary hover:scale-105 active:scale-100'
-        } ${gridClass}`}
+        className="relative group flex items-center justify-center p-2.5 bg-slate-700/50 text-slate-300 rounded-full transition-all duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed hover:enabled:bg-brand-primary/80 hover:enabled:text-white"
         aria-label={label}
+        title={label}
     >
         <SvgIcon path={iconPath} />
-        <span className="text-xs font-bold mt-1">{label}</span>
     </button>
 );
 
 const Controls: React.FC<ControlsProps> = ({ onAction, isDisabled }) => {
   return (
-    <div className="grid grid-cols-3 gap-2 w-full max-w-xs">
-        <ControlButton label="Pan L" action={CameraAction.PAN_LEFT} onAction={onAction} isDisabled={isDisabled} iconPath="M15 18l-6-6 6-6" gridClass="col-start-1" />
-        <ControlButton label="Tilt Up" action={CameraAction.TILT_UP} onAction={onAction} isDisabled={isDisabled} iconPath="M12 19V5 M5 12l7-7 7 7" gridClass="col-start-2" />
-        <ControlButton label="Pan R" action={CameraAction.PAN_RIGHT} onAction={onAction} isDisabled={isDisabled} iconPath="M9 18l6-6-6-6" gridClass="col-start-3" />
-        
-        <ControlButton label="Zoom Out" action={CameraAction.ZOOM_OUT} onAction={onAction} isDisabled={isDisabled} iconPath="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16zM8 11h6" gridClass="col-start-1" />
-        <ControlButton label="Tilt Dn" action={CameraAction.TILT_DOWN} onAction={onAction} isDisabled={isDisabled} iconPath="M12 5v14M19 12l-7 7-7-7" gridClass="col-start-2" />
-        <ControlButton label="Zoom In" action={CameraAction.ZOOM_IN} onAction={onAction} isDisabled={isDisabled} iconPath="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16zM11 8v6M8 11h6" gridClass="col-start-3" />
+    <div className="flex items-center gap-2">
+        <ControlButton label="Pan Left (A)" action={CameraAction.PAN_LEFT} onAction={onAction} isDisabled={isDisabled} iconPath="M15 18l-6-6 6-6" />
+        <div className="flex flex-col gap-1.5">
+            <ControlButton label="Tilt Up (W)" action={CameraAction.TILT_UP} onAction={onAction} isDisabled={isDisabled} iconPath="M12 19V5 M5 12l7-7 7 7" />
+            <ControlButton label="Tilt Down (S)" action={CameraAction.TILT_DOWN} onAction={onAction} isDisabled={isDisabled} iconPath="M12 5v14M19 12l-7 7-7-7" />
+        </div>
+        <ControlButton label="Pan Right (D)" action={CameraAction.PAN_RIGHT} onAction={onAction} isDisabled={isDisabled} iconPath="M9 18l6-6-6-6" />
+         <div className="flex flex-col gap-1.5">
+            <ControlButton label="Zoom In (E)" action={CameraAction.ZOOM_IN} onAction={onAction} isDisabled={isDisabled} iconPath="M11 19V5 M5 12h14 M12 5l-4 4 M12 5l4 4" />
+            <ControlButton label="Zoom Out (Q)" action={CameraAction.ZOOM_OUT} onAction={onAction} isDisabled={isDisabled} iconPath="M11 5v14 M5 12h14 M12 19l-4-4 M12 19l4-4" />
+        </div>
     </div>
   );
 };
