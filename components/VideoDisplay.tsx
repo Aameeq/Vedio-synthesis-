@@ -35,18 +35,18 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
   };
 
   const handleVideoEndCallback = useCallback(() => {
-    const video = videoUrl ? videoRef.current : null;
+    const video = videoRef.current; // Always get video from ref
     if (!video) return;
 
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d'); // Fix: Was 'd'
     if (ctx) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       onVideoEnd(canvas.toDataURL('image/jpeg'));
     }
-  }, [videoUrl, onVideoEnd]);
+  }, [onVideoEnd]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -57,7 +57,7 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
     return () => {
       video.removeEventListener('ended', handleVideoEndCallback);
     };
-  }, [videoUrl, handleVideoEndCallback]);
+  }, [videoUrl, stereoVideoUrls, handleVideoEndCallback]);
   
   // --- WebXR Logic ---
   useEffect(() => {

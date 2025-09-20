@@ -1,19 +1,18 @@
 import React from 'react';
 
-// This global declaration adds TypeScript support for the <model-viewer> custom element.
-// It defines the element in the JSX.IntrinsicElements namespace, allowing it to be used in TSX
-// with type-checking for its props like `src`, `cameraControls`, etc.
+// To resolve issues with custom elements in React, we declare the custom element for TypeScript.
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      // Fix: Correctly type the custom element by intersecting React's HTMLAttributes
-      // with the specific properties for model-viewer. This resolves the type error.
-      'model-viewer': React.HTMLAttributes<HTMLElement> & {
+      // Fix: Correctly type the 'model-viewer' custom element.
+      // The previous type definition was causing a TypeScript error. Using React.DetailedHTMLProps
+      // provides a more robust type that includes standard HTML attributes along with custom ones.
+      'model-viewer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
         src?: string;
         alt?: string;
-        cameraControls?: boolean;
-        autoRotate?: boolean;
-      };
+        'camera-controls'?: boolean;
+        'auto-rotate'?: boolean;
+      }, HTMLElement>;
     }
   }
 }
@@ -31,8 +30,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ src, fileName }) => {
       <model-viewer
         src={src}
         alt={`A 3D model of ${fileName}`}
-        cameraControls
-        autoRotate
+        camera-controls
+        auto-rotate
         style={{ width: '100%', height: '100%', backgroundColor: 'transparent' }}
       />
     </div>

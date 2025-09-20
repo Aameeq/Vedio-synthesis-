@@ -8,8 +8,15 @@ import Loader from '../components/Loader';
 import ErrorDisplay from '../components/ErrorDisplay';
 import VideoDisplay from '../components/VideoDisplay';
 import AssetLibrary from '../components/AssetLibrary';
-import BottomBar from '../components/BottomBar';
 import Placeholder from '../components/Placeholder';
+import PromptInput from '../components/PromptInput';
+import Controls from '../components/Controls';
+import PresetSelector from '../components/PresetSelector';
+import ModeToggle from '../components/ModeToggle';
+import SceneEditor from '../components/SceneEditor';
+import StereoToggle from '../components/StereoToggle';
+import AnimationControls from '../components/AnimationControls';
+
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -56,7 +63,7 @@ const WorldBuilder: React.FC = () => {
   }, []);
 
   const handleStyleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const file = event.target.files?-[0];
     if (file && file.type.startsWith('image/')) {
         try {
             const base64 = await fileToBase64(file);
@@ -240,53 +247,90 @@ const WorldBuilder: React.FC = () => {
   }, [handleStep, isReadyForInput, appIsBusy, mode]);
   
   return (
-    <div className="w-full h-full flex-grow flex flex-col relative overflow-hidden animate-fadeIn p-4 md:p-6 lg:p-8">
-      {error && <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 w-full max-w-md"><ErrorDisplay message={error} onDismiss={() => setError(null)} /></div>}
+    <div className="w-full h-full flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 animate-fadeIn">
+      {error && <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-md"><ErrorDisplay message={error} onDismiss={() => setError(null)} /></div>}
       
-      {/* Main Content Canvas */}
-      <div className="w-full flex-grow flex items-center justify-center relative bg-brand-dark-secondary rounded-2xl overflow-hidden shadow-2xl">
-        {isLoading && <Loader message={loadingMessage} />}
-        
-        {currentFrame ? (
-             <VideoDisplay
-                videoUrl={currentVideoSource}
-                stereoVideoUrls={stereoVideoUrls}
-                audioUrl={audioUrl}
-                frameUrl={currentFrame}
-                onVideoEnd={handleVideoEnd}
-                isLoading={isLoading}
-                isReady={isReadyForInput && !appIsBusy}
-                isStereo={isStereoMode}
-                onSave={handleSaveWorld}
-                onAddAmbiance={handleGenerateAudio}
-                isGeneratingAudio={isGeneratingAudio}
-                audioDescription={audioDescription}
-             />
-        ) : (
-            <Placeholder />
-        )}
+      <div className="w-full max-w-4xl bg-brand-dark-secondary rounded-2xl shadow-xl p-6 sm:p-8 flex flex-col gap-6 border border-slate-700/50">
+        {/* Preview Panel */}
+        <div className="w-full aspect-video bg-black rounded-xl flex items-center justify-center relative overflow-hidden">
+          {isLoading && <Loader message={loadingMessage} />}
+          {currentFrame ? (
+               <VideoDisplay
+                  videoUrl={currentVideoSource}
+                  stereoVideoUrls={stereoVideoUrls}
+                  audioUrl={audioUrl}
+                  frameUrl={currentFrame}
+                  onVideoEnd={handleVideoEnd}
+                  isLoading={isLoading}
+                  isReady={isReadyForInput && !appIsBusy}
+                  isStereo={isStereoMode}
+                  onSave={handleSaveWorld}
+                  onAddAmbiance={handleGenerateAudio}
+                  isGeneratingAudio={isGeneratingAudio}
+                  audioDescription={audioDescription}
+               />
+          ) : (
+              <Placeholder />
+          )}
+        </div>
+
+        {/* Control Panel */}
+        <div className="w-full">
+            {!currentFrame ? (
+                <div className="w-full flex flex-row items-center gap-4">
+                    <label 
+                        htmlFor="style-image-upload" 
+                        className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-brand-dark-tertiary text-slate-400 rounded-xl hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
+                        title="Add style reference image"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </label>
+                    <input id="style-image-upload" type="file" accept="image/*" onChange={handleStyleImageChange} className="hidden" />
+                    <div className="flex-1">
+                        <PromptInput
+                            prompt={prompt}
+                            setPrompt={setPrompt}
+                            onGenerate={handleGenerateImage}
+                            isDisabled={appIsBusy}
+                        />
+                    </div>
+                    <button
+                        onClick={handleGenerateImage}
+                        disabled={appIsBusy || !prompt.trim()}
+                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold rounded-xl shadow-md hover:scale-105 transition-transform duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isLoading ? 'Generating...' : 'Generate'}
+                    </button>
+                </div>
+            ) : (
+              <div className="w-full flex flex-col items-center gap-4">
+                <div className="w-full flex items-center justify-center">
+                    {mode === AppMode.EDIT ? (
+                        <SceneEditor
+                            prompt={editPrompt}
+                            setPrompt={setEditPrompt}
+                            onEdit={handleEditScene}
+                            onCancel={() => setMode(AppMode.CAMERA)}
+                            isDisabled={appIsBusy}
+                        />
+                    ) : (
+                       <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3">
+                           <div className="flex items-center gap-2">
+                               <Controls onAction={handleStep} isDisabled={!isReadyForInput || appIsBusy} />
+                               <PresetSelector presets={PRESET_MOVEMENTS} onSelect={handlePresetSelect} isDisabled={!isReadyForInput || appIsBusy} />
+                           </div>
+                           <div className="flex items-center gap-2">
+                               <AnimationControls prompt={animationPrompt} setPrompt={setAnimationPrompt} isDisabled={!isReadyForInput || appIsBusy} />
+                               <StereoToggle isEnabled={isStereoMode} onToggle={setIsStereoMode} isDisabled={appIsBusy} />
+                           </div>
+                       </div>
+                    )}
+                </div>
+                <ModeToggle currentMode={mode} onModeChange={setMode} isDisabled={appIsBusy} />
+              </div>
+            )}
+        </div>
       </div>
-       
-      <BottomBar
-        stage={currentFrame ? 'director' : 'initial'}
-        prompt={prompt}
-        setPrompt={setPrompt}
-        onGenerate={handleGenerateImage}
-        styleReferenceImage={styleReferenceImage}
-        onStyleImageChange={handleStyleImageChange}
-        mode={mode}
-        onModeChange={setMode}
-        animationPrompt={animationPrompt}
-        setAnimationPrompt={setAnimationPrompt}
-        onAction={handleStep}
-        onPresetSelect={handlePresetSelect}
-        editPrompt={editPrompt}
-        setEditPrompt={setEditPrompt}
-        onEdit={handleEditScene}
-        isStereoMode={isStereoMode}
-        onStereoToggle={setIsStereoMode}
-        appIsBusy={appIsBusy}
-      />
 
       {isLibraryOpen && (
         <AssetLibrary
