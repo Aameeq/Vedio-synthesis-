@@ -1,22 +1,22 @@
 import React from 'react';
 
-// To resolve issues with custom elements in React, we declare the custom element for TypeScript.
-
-// First, define an interface for the element's attributes, extending standard HTML attributes.
-interface ModelViewerAttributes extends React.HTMLAttributes<HTMLElement> {
-    src?: string;
-    alt?: string;
-    // Fix: Use camelCase for custom element properties. React passes these as properties
-    // on the DOM element, and the model-viewer element expects camelCase (e.g., `cameraControls`).
-    // The original kebab-case ('camera-controls') does not map to a valid property.
-    cameraControls?: boolean;
-    autoRotate?: boolean;
-}
-
-// Then, augment the JSX IntrinsicElements interface to make TypeScript aware of 'model-viewer'.
+// Fix: Refactor the custom element type definition to be more robust.
+// To resolve issues with custom elements in React, we declare the custom element for TypeScript
+// by augmenting the JSX.IntrinsicElements interface. This makes TypeScript aware of 'model-viewer'
+// and allows it to be used like a native JSX element with type checking.
 declare global {
   namespace JSX {
+    // By extending React's HTMLAttributes, we get all the standard HTML props like `style`, `className`, etc.
+    // We then add the specific properties for the 'model-viewer' element.
+    interface ModelViewerAttributes extends React.HTMLAttributes<HTMLElement> {
+      src?: string;
+      alt?: string;
+      cameraControls?: boolean;
+      autoRotate?: boolean;
+    }
+
     interface IntrinsicElements {
+      // Use the custom attributes interface for the 'model-viewer' tag.
       'model-viewer': ModelViewerAttributes;
     }
   }
@@ -35,7 +35,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ src, fileName }) => {
       <model-viewer
         src={src}
         alt={`A 3D model of ${fileName}`}
-        // Fix: Use camelCase props to set properties on the custom element directly.
+        // React converts camelCase props like `cameraControls` to kebab-case attributes (`camera-controls`)
+        // for custom elements, which is what <model-viewer> expects.
         cameraControls
         autoRotate
         style={{ width: '100%', height: '100%', backgroundColor: 'transparent' }}
