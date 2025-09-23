@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Modality } from "@google/genai";
 import { CameraAction } from '../types';
 import { VEO_PROMPT_TEMPLATE, LOADING_MESSAGES } from "../constants";
@@ -272,7 +273,7 @@ const AMBIENT_SOUNDS: { keywords: string[]; url: string }[] = [
         url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4' // Perfect for sci-fi/robotics
     },
     { 
-        keywords: ['surreal', 'dream', 'space', 'alien', 'ethereal', 'magical'], 
+        keywords: ['surreal', 'dream', 'space', 'alien', 'ethereal', 'magical', 'atom', 'electrons', 'cosmic', 'bond'], 
         url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4' 
     },
     
@@ -443,4 +444,19 @@ Please generate the Jest/React Testing Library tests for this component.
     });
 
     return response.text.replace(/```(?:tsx|typescript|javascript)?\s*|```\s*$/g, '').trim();
+};
+
+export const improvisePrompt = async (prompt: string): Promise<string> => {
+    const systemInstruction = `You are an expert prompt engineer for an AI image generator. Your task is to take a user's simple concept and expand it into a rich, detailed, and cinematic prompt. Focus on visual details, lighting, style, and composition to create a stunning, hyper-realistic, 8k image with an Unreal Engine 5 look. The output must be only the improved prompt text, with no extra explanations, preamble, or markdown.`;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `User's concept: "${prompt}"`,
+        config: {
+            systemInstruction: systemInstruction,
+            temperature: 0.8,
+        }
+    });
+
+    return response.text.trim();
 };

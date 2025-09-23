@@ -1,8 +1,7 @@
 import React from 'react';
 
-// Fix: Correctly define types for the <model-viewer> custom element.
-// This adds the custom element to TypeScript's JSX namespace, allowing it to be used
-// with type checking and standard React props like `style` or `key`.
+// Fix: Add type definitions for the <model-viewer> custom element to the global JSX namespace.
+// This allows TypeScript to recognize the element and its properties in JSX, resolving the error.
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -11,6 +10,7 @@ declare global {
         alt?: string;
         cameraControls?: boolean;
         autoRotate?: boolean;
+        style?: React.CSSProperties;
       };
     }
   }
@@ -29,8 +29,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ src, fileName }) => {
       <model-viewer
         src={src}
         alt={`A 3D model of ${fileName}`}
-        // React converts camelCase props like `cameraControls` to kebab-case attributes (`camera-controls`)
-        // for custom elements, which is what <model-viewer> expects.
         cameraControls
         autoRotate
         style={{ width: '100%', height: '100%', backgroundColor: 'transparent' }}

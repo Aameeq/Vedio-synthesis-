@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { AnchorPoint, Transform } from '../types';
 
@@ -166,13 +166,19 @@ const ARPreview: React.FC<ARPreviewProps> = ({ modelFile, stream, transform, anc
         const scale = (landmarks[386].x - landmarks[159].x) * canvas.clientWidth * 1.5 * transform.scale;
         model.scale.set(scale, scale, scale);
 
-        const rotationMatrix = new THREE.Matrix4().fromArray(results.facialTransformationMatrixes[0].data);
-        const rotationQuaternion = new THREE.Quaternion().setFromRotationMatrix(rotationMatrix);
-        model.quaternion.copy(rotationQuaternion);
-        
-        model.rotateX(transform.rotation.x);
-        model.rotateY(transform.rotation.y);
-        model.rotateZ(transform.rotation.z);
+        // Get base rotation from head tracking
+        const headQuaternion = new THREE.Quaternion();
+        if (results.facialTransformationMatrixes && results.facialTransformationMatrixes.length > 0 && results.facialTransformationMatrixes[0].data) {
+            const rotationMatrix = new THREE.Matrix4().fromArray(results.facialTransformationMatrixes[0].data);
+            headQuaternion.setFromRotationMatrix(rotationMatrix);
+        }
+
+        // Get user-controlled rotation adjustment from sliders
+        const userEuler = new THREE.Euler(transform.rotation.x, transform.rotation.y, transform.rotation.z);
+        const userQuaternion = new THREE.Quaternion().setFromEuler(userEuler);
+
+        // Combine rotations: first apply head tracking, then user adjustments
+        model.quaternion.copy(headQuaternion).multiply(userQuaternion);
         
         renderer.render(sceneRef.current, camera);
     };

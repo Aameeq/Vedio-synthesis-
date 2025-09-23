@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
@@ -18,31 +17,29 @@ interface VideoDisplayProps {
   onSave: () => void;
   onAddAmbiance: () => void;
   isGeneratingAudio: boolean;
-  // Fix: Add missing audioDescription prop to the interface.
   audioDescription: string | null;
 }
 
 const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
-  // Fix: Destructure the new audioDescription prop.
   const { videoUrl, stereoVideoUrls, audioUrl, frameUrl, onVideoEnd, isLoading, isReady, isStereo, onSave, onAddAmbiance, isGeneratingAudio, audioDescription } = props;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const vrButtonContainerRef = useRef<HTMLDivElement>(null);
 
   const formatTime = (time: number) => {
+    if (isNaN(time) || time === Infinity) return '00:00';
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const handleVideoEndCallback = useCallback(() => {
-    const video = videoRef.current; // Always get video from ref
+    const video = videoRef.current;
     if (!video) return;
 
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    // Fix: Was 'd'
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -78,7 +75,7 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
     button.style.position = 'absolute';
     button.style.bottom = '120px';
     button.style.right = '16px';
-    button.style.zIndex = '10';
+    button.style.zIndex = '20';
     vrButtonContainerRef.current.appendChild(button);
 
     // Video setup
@@ -102,10 +99,10 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
     const materialLeft = new THREE.MeshBasicMaterial({ map: videoTextureLeft });
     const screenLeft = new THREE.Mesh(screenGeometry, materialLeft);
     screenLeft.layers.set(LEFT_LAYER);
-    screenLeft.position.set(-0.02, 0, 0); // Slight offset for left eye
+    screenLeft.position.set(-0.02, 0, 0); 
     scene.add(screenLeft);
     
-    let videoRightEl: HTMLVideoElement, screenRight: THREE.Mesh;
+    let videoRightEl: HTMLVideoElement | null = null;
     if (stereoVideoUrls) {
         camera.layers.enable(RIGHT_LAYER);
 
@@ -117,60 +114,87 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
         
         const videoTextureRight = new THREE.VideoTexture(videoRightEl);
         const materialRight = new THREE.MeshBasicMaterial({ map: videoTextureRight });
-        screenRight = new THREE.Mesh(screenGeometry, materialRight);
+        const screenRight = new THREE.Mesh(screenGeometry, materialRight);
         screenRight.layers.set(RIGHT_LAYER);
-        screenRight.position.set(0.02, 0, 0); // Slight offset for right eye
+        screenRight.position.set(0.02, 0, 0);
         scene.add(screenRight);
     }
 
     // VR Controls UI
+    const UI_WIDTH = 1024;
+    const UI_HEIGHT = 128;
+    const UI_ASPECT = UI_WIDTH / UI_HEIGHT;
+    const UI_PLANE_WIDTH = screenWidth / 1.8;
+    const UI_PLANE_HEIGHT = UI_PLANE_WIDTH / UI_ASPECT;
+
+    const uiGroup = new THREE.Group();
+    uiGroup.position.set(0, -screenHeight / 2 - 0.25, -0.5);
+    scene.add(uiGroup);
+
     const uiCanvas = document.createElement('canvas');
-    uiCanvas.width = 1024;
-    uiCanvas.height = 128;
+    uiCanvas.width = UI_WIDTH;
+    uiCanvas.height = UI_HEIGHT;
     const uiContext = uiCanvas.getContext('2d')!;
     const uiTexture = new THREE.CanvasTexture(uiCanvas);
     const uiMaterial = new THREE.MeshBasicMaterial({ map: uiTexture, transparent: true });
-    const uiGeometry = new THREE.PlaneGeometry(screenWidth / 2, (screenWidth / 2) * (128 / 1024));
+    const uiGeometry = new THREE.PlaneGeometry(UI_PLANE_WIDTH, UI_PLANE_HEIGHT);
     const uiPlane = new THREE.Mesh(uiGeometry, uiMaterial);
-    uiPlane.position.set(0, -screenHeight / 2 - 0.2, -0.5);
-    scene.add(uiPlane);
-    
-    let isSeeking = false;
-    let intersectedObject: THREE.Object3D | null = null;
-    const interactiveObjects = [uiPlane];
+    uiGroup.add(uiPlane);
 
+    const uiElements = {
+        play: { x: 40, y: 32, w: 64, h: 64 },
+        seek: { x: 140, y: 56, w: UI_WIDTH - 320, h: 16 }
+    };
+
+    let isSeeking = false;
+    let intersectedElementName: string | null = null;
+    
     function drawUI() {
         if (!uiContext) return;
         const video = videoLeftEl;
         
-        uiContext.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
-        uiContext.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        uiContext.fillRect(0, 0, uiCanvas.width, uiCanvas.height);
+        uiContext.clearRect(0, 0, UI_WIDTH, UI_HEIGHT);
+        uiContext.fillStyle = 'rgba(15, 23, 42, 0.6)';
+        uiContext.roundRect(0, 0, UI_WIDTH, UI_HEIGHT, 20);
+        uiContext.fill();
 
-        uiContext.fillStyle = intersectedObject?.name === 'play' ? '#818cf8' : '#e2e8f0';
+        // Draw Play/Pause Button
+        uiContext.fillStyle = intersectedElementName === 'play' ? '#a5b4fc' : '#e2e8f0';
         uiContext.beginPath();
         if (video.paused) {
-            uiContext.moveTo(40, 32); uiContext.lineTo(40, 96); uiContext.lineTo(88, 64);
+            uiContext.moveTo(uiElements.play.x + 20, uiElements.play.y + 12);
+            uiContext.lineTo(uiElements.play.x + 20, uiElements.play.y + uiElements.play.h - 12);
+            uiContext.lineTo(uiElements.play.x + uiElements.play.w - 15, uiElements.play.y + uiElements.play.h / 2);
         } else {
-            uiContext.fillRect(35, 32, 20, 64); uiContext.fillRect(65, 32, 20, 64);
+            uiContext.fillRect(uiElements.play.x + 15, uiElements.play.y + 12, 15, uiElements.play.h - 24);
+            uiContext.fillRect(uiElements.play.x + uiElements.play.w - 30, uiElements.play.y + 12, 15, uiElements.play.h - 24);
         }
         uiContext.closePath();
         uiContext.fill();
 
-        const seekBarX = 140;
-        const seekBarY = 60;
-        const seekBarWidth = uiCanvas.width - 180 - 140;
+        // Draw Seek Bar
         uiContext.fillStyle = '#475569';
-        uiContext.fillRect(seekBarX, seekBarY, seekBarWidth, 8);
-
+        uiContext.roundRect(uiElements.seek.x, uiElements.seek.y, uiElements.seek.w, uiElements.seek.h, 8);
+        uiContext.fill();
+        
         const progress = (video.currentTime / video.duration) || 0;
-        uiContext.fillStyle = intersectedObject?.name === 'seek' ? '#a5b4fc' : '#4f46e5';
-        uiContext.fillRect(seekBarX, seekBarY, seekBarWidth * progress, 8);
-
+        if (progress > 0) {
+            uiContext.fillStyle = intersectedElementName === 'seek' ? '#818cf8' : '#4f46e5';
+            uiContext.roundRect(uiElements.seek.x, uiElements.seek.y, uiElements.seek.w * progress, uiElements.seek.h, 8);
+            uiContext.fill();
+        }
+        
         uiContext.fillStyle = '#e2e8f0';
-        uiContext.font = '32px Inter';
+        uiContext.beginPath();
+        uiContext.arc(uiElements.seek.x + uiElements.seek.w * progress, uiElements.seek.y + uiElements.seek.h / 2, 12, 0, Math.PI * 2);
+        uiContext.fill();
+
+        // Draw Time Display
+        uiContext.fillStyle = '#e2e8f0';
+        uiContext.font = 'bold 36px Inter';
+        uiContext.textAlign = 'right';
         const timeText = `${formatTime(video.currentTime)} / ${formatTime(video.duration || 0)}`;
-        uiContext.fillText(timeText, uiCanvas.width - 180, 72);
+        uiContext.fillText(timeText, UI_WIDTH - 40, 80);
         
         uiTexture.needsUpdate = true;
     }
@@ -186,55 +210,74 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
         scene.add(controller);
 
         controller.addEventListener('selectstart', () => {
-            if (intersectedObject) {
-                if(intersectedObject.name === 'play') videoLeftEl.paused ? videoLeftEl.play() : videoLeftEl.pause();
-                if(intersectedObject.name === 'seek') isSeeking = true;
+            if (intersectedElementName) {
+                if (intersectedElementName === 'play') {
+                    if (videoLeftEl.paused) {
+                        videoLeftEl.play();
+                        videoRightEl?.play();
+                    } else {
+                        videoLeftEl.pause();
+                        videoRightEl?.pause();
+                    }
+                }
+                if (intersectedElementName === 'seek') isSeeking = true;
             }
         });
         controller.addEventListener('selectend', () => { isSeeking = false; });
     });
 
-
     renderer.setAnimationLoop(() => {
         const session = renderer.xr.getSession();
         if(!session) return;
         
-        let controllerWithIntersection: THREE.Object3D | undefined = undefined;
+        let frameIntersection: string | null = null;
         
         controllers.forEach(controller => {
+            if (frameIntersection) return; 
             tempMatrix.identity().extractRotation(controller.matrixWorld);
             raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
             raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
             
-            const intersects = raycaster.intersectObjects(interactiveObjects);
+            const intersects = raycaster.intersectObject(uiPlane);
             
             if (intersects.length > 0) {
-                 controllerWithIntersection = controller;
-                 const point = intersects[0].point;
-                 uiPlane.worldToLocal(point);
-                 
-                 const x = point.x + uiGeometry.parameters.width / 2;
-                 const normalizedX = x / uiGeometry.parameters.width;
+                const localPoint = new THREE.Vector3();
+                uiPlane.worldToLocal(localPoint.copy(intersects[0].point));
+                
+                const canvasX = (localPoint.x / UI_PLANE_WIDTH + 0.5) * UI_WIDTH;
+                const canvasY = (-localPoint.y / UI_PLANE_HEIGHT + 0.5) * UI_HEIGHT;
 
-                 if (normalizedX > 0.03 && normalizedX < 0.12) {
-                     intersectedObject = { name: 'play' } as THREE.Object3D;
-                 } else if (normalizedX > 0.13 && normalizedX < 0.72) {
-                     intersectedObject = { name: 'seek' } as THREE.Object3D;
-                     if(isSeeking) {
-                         const seekProgress = (normalizedX - 0.13) / (0.72 - 0.13);
-                         videoLeftEl.currentTime = videoLeftEl.duration * seekProgress;
+                const play = uiElements.play;
+                if (canvasX >= play.x && canvasX <= play.x + play.w && canvasY >= play.y && canvasY <= play.y + play.h) {
+                    frameIntersection = 'play';
+                }
+                
+                const seek = uiElements.seek;
+                // Add vertical padding to the seek bar's hitbox for easier interaction
+                if (canvasX >= seek.x && canvasX <= seek.x + seek.w && canvasY >= seek.y - 10 && canvasY <= seek.y + seek.h + 10) {
+                    frameIntersection = 'seek';
+
+                     if (isSeeking) {
+                         const seekProgress = (canvasX - seek.x) / seek.w;
+                         const newTime = videoLeftEl.duration * Math.max(0, Math.min(1, seekProgress));
+                         // Apply time update to both videos for perfect sync
+                         if (isFinite(newTime)) {
+                            videoLeftEl.currentTime = newTime;
+                            if (videoRightEl) videoRightEl.currentTime = newTime;
+                         }
                      }
-                 } else {
-                     intersectedObject = null;
-                 }
-                 
-            } 
-            ((controller.children[0] as THREE.Line).material as THREE.LineBasicMaterial).color.set(intersects.length > 0 ? 0x818cf8 : 0xffffff);
+                }
+                 ((controller.children[0] as THREE.Line).material as THREE.LineBasicMaterial).color.set(0x818cf8);
+            } else {
+                 ((controller.children[0] as THREE.Line).material as THREE.LineBasicMaterial).color.set(0xffffff);
+            }
         });
+        intersectedElementName = frameIntersection;
 
-        if(!controllerWithIntersection) intersectedObject = null;
-
-        if (videoRightEl) videoRightEl.currentTime = videoLeftEl.currentTime;
+        // Fallback sync in case of drift
+        if (videoRightEl && Math.abs(videoRightEl.currentTime - videoLeftEl.currentTime) > 0.1) {
+            videoRightEl.currentTime = videoLeftEl.currentTime;
+        }
 
         drawUI();
         renderer.render(scene, camera);
@@ -242,12 +285,12 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
 
     renderer.xr.addEventListener('sessionstart', () => {
         videoLeftEl.play();
-        if(videoRightEl) videoRightEl.play();
+        videoRightEl?.play();
     });
     
     renderer.xr.addEventListener('sessionend', () => {
         videoLeftEl.pause();
-        if(videoRightEl) videoRightEl.pause();
+        videoRightEl?.pause();
         handleVideoEndCallback();
     });
 
@@ -263,7 +306,7 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
   const showVideo = !!(videoUrl || stereoVideoUrls);
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center">
+    <div className="w-full h-full flex items-center justify-center bg-black">
       <div className="w-full h-full relative">
         {showVideo ? (
           <video
@@ -280,11 +323,11 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
         
         {audioUrl && <audio ref={audioRef} src={audioUrl} autoPlay loop />}
         
-        <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
             <SaveWorldButton onClick={onSave} isDisabled={!isReady} />
             <AudioControl onGenerateAudio={onAddAmbiance} isGenerating={isGeneratingAudio} isDisabled={!isReady} audioDescription={audioDescription} />
         </div>
-        <div className="absolute bottom-24 left-4 z-10">
+        <div className="absolute bottom-24 left-4 z-20">
             <DownloadButton videoUrl={videoUrl ?? stereoVideoUrls?.left} isDisabled={!showVideo} isStereo={isStereo} />
         </div>
         <div ref={vrButtonContainerRef} />

@@ -49,7 +49,7 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <div className="h-screen bg-brand-dark flex flex-col font-sans text-slate-200">
         <Header currentRoute={route} onNavigate={navigate} onLibraryClick={handleLibraryClick} />
-        <main className="w-full flex-grow flex flex-col overflow-hidden">
+        <main className="w-full flex-grow overflow-hidden relative">
           {renderPage()}
         </main>
       </div>
