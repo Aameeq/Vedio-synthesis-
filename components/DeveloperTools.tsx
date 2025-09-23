@@ -7,13 +7,17 @@ interface DeveloperToolsProps {
 }
 
 const DeveloperTools: React.FC<DeveloperToolsProps> = ({ onClose }) => {
-  const [selectedComponent, setSelectedComponent] = useState<string>(Object.keys(COMPONENT_SOURCES)[0]);
+  const componentNames = Object.keys(COMPONENT_SOURCES);
+  const isFeatureEnabled = componentNames.length > 0;
+
+  const [selectedComponent, setSelectedComponent] = useState<string>(isFeatureEnabled ? componentNames[0] : '');
   const [generatedCode, setGeneratedCode] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState<string>('');
 
   const handleGenerateTests = async () => {
+    if (!isFeatureEnabled) return;
     setIsLoading(true);
     setError('');
     setGeneratedCode('');
@@ -48,7 +52,7 @@ const DeveloperTools: React.FC<DeveloperToolsProps> = ({ onClose }) => {
         <header className="p-4 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
           <div>
             <h2 className="text-xl font-bold">Developer Tools: AI Test Generator</h2>
-            <p className="text-sm text-brand-text-secondary">Press Ctrl+Alt+D to toggle this panel.</p>
+            <p className="text-sm text-slate-400">Press Ctrl+Alt+D to toggle this panel.</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
         </header>
@@ -58,16 +62,21 @@ const DeveloperTools: React.FC<DeveloperToolsProps> = ({ onClose }) => {
             <select
               value={selectedComponent}
               onChange={(e) => setSelectedComponent(e.target.value)}
-              className="w-full bg-gray-800 border-2 border-gray-700 text-brand-text rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              disabled={!isFeatureEnabled}
+              className="w-full bg-gray-800 border-2 border-gray-700 text-slate-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-brand-primary disabled:opacity-50"
             >
-              {Object.keys(COMPONENT_SOURCES).map(name => (
-                <option key={name} value={name}>{name}</option>
-              ))}
+              {isFeatureEnabled ? (
+                componentNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))
+              ) : (
+                <option>Feature not available</option>
+              )}
             </select>
             <h3 className="font-semibold mt-2">2. Generate Tests</h3>
             <button
               onClick={handleGenerateTests}
-              disabled={isLoading}
+              disabled={isLoading || !isFeatureEnabled}
               className="w-full px-5 py-2 bg-brand-primary text-white font-bold rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark focus:ring-brand-primary disabled:opacity-50"
             >
               {isLoading ? 'Generating...' : 'Generate Tests'}
@@ -89,7 +98,8 @@ const DeveloperTools: React.FC<DeveloperToolsProps> = ({ onClose }) => {
             <div className="bg-gray-900 rounded-md p-1 flex-grow overflow-auto border border-gray-700">
               <pre className="h-full w-full">
                 <code className="language-tsx text-sm text-white h-full w-full block p-4">
-                  {isLoading ? 'AI is generating tests, please wait...' : generatedCode || 'Generated test code will appear here...'}
+                  {!isFeatureEnabled ? 'This feature is unavailable because component source files could not be loaded.' :
+                   (isLoading ? 'AI is generating tests, please wait...' : generatedCode || 'Generated test code will appear here...')}
                 </code>
               </pre>
             </div>

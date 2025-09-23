@@ -289,8 +289,8 @@ const WorldBuilder: React.FC = () => {
     };
 
     const renderInitialView = () => (
-        <div className="flex-grow w-full flex items-center justify-center p-4">
-             {isLibraryOpen && (
+        <div className="flex-grow flex items-center justify-center p-4">
+            {isLibraryOpen && (
                 <AssetLibrary 
                     worlds={savedWorlds} 
                     onLoad={handleLoadWorld} 
@@ -330,7 +330,7 @@ const WorldBuilder: React.FC = () => {
     );
 
     const renderWorldView = () => (
-        <>
+        <div className="flex-grow w-full relative">
             {error && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl">
                      <ErrorDisplay message={error} onDismiss={dismissError} />
@@ -345,29 +345,26 @@ const WorldBuilder: React.FC = () => {
                     onClose={() => setIsLibraryOpen(false)}
                 />
             )}
-
-            {/* Viewport */}
-            <div className="flex-grow relative flex items-center justify-center overflow-hidden p-2 bg-black">
-                <VideoDisplay
-                    videoUrl={videoUrl}
-                    stereoVideoUrls={stereoVideoUrls}
-                    audioUrl={audioUrl}
-                    frameUrl={currentFrame}
-                    onVideoEnd={handleVideoEnd}
-                    isLoading={isLoading}
-                    isReady={isReady}
-                    isStereo={isStereo}
-                    onSave={handleSaveWorld}
-                    onAddAmbiance={handleAddAmbiance}
-                    isGeneratingAudio={isGeneratingAudio}
-                    audioDescription={audioDescription}
-                />
-                {isLoading && <Loader message={loadingMessage} />}
-            </div>
             
-            {/* Control Bar */}
-            <div className="flex-shrink-0 w-full flex justify-center py-3 bg-brand-dark-secondary border-t border-slate-700/50 animate-fadeIn">
-                <div className="p-2 bg-brand-dark/40 backdrop-blur-sm rounded-full flex items-center gap-4 shadow-lg">
+            <VideoDisplay
+                videoUrl={videoUrl}
+                stereoVideoUrls={stereoVideoUrls}
+                audioUrl={audioUrl}
+                frameUrl={currentFrame}
+                onVideoEnd={handleVideoEnd}
+                isLoading={isLoading}
+                isReady={isReady}
+                isStereo={isStereo}
+                onSave={handleSaveWorld}
+                onAddAmbiance={handleAddAmbiance}
+                isGeneratingAudio={isGeneratingAudio}
+                audioDescription={audioDescription}
+            />
+
+            {isLoading && <Loader message={loadingMessage} />}
+
+            <div className="absolute bottom-0 left-0 right-0 z-30 flex justify-center py-3 bg-gradient-to-t from-black/50 to-transparent">
+                <div className="p-2 bg-brand-dark/40 backdrop-blur-sm rounded-full flex items-center gap-4 shadow-lg border border-slate-700/50">
                     <ModeToggle currentMode={appMode} onModeChange={handleModeChange} isDisabled={!isReady} />
                     <div className="w-px h-8 bg-slate-600" />
                     {appMode === AppMode.CAMERA ? (
@@ -388,13 +385,13 @@ const WorldBuilder: React.FC = () => {
                     )}
                 </div>
             </div>
-        </>
-    );
-    
-    return (
-        <div className="w-full h-full flex flex-col bg-brand-dark-secondary">
-           {currentFrame ? renderWorldView() : renderInitialView()}
         </div>
+    );
+
+    return (
+      <div className="absolute inset-0 flex flex-col bg-brand-dark-secondary">
+        {currentFrame ? renderWorldView() : renderInitialView()}
+      </div>
     );
 };
 
