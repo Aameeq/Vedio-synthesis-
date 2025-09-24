@@ -1,5 +1,4 @@
-
-// Fix: Change React import to namespace import to resolve JSX typing issues.
+// Fix: Changed React import to a namespace import to resolve JSX intrinsic element errors.
 import * as React from 'react';
 
 interface ErrorDisplayProps {

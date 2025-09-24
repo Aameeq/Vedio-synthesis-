@@ -1,6 +1,4 @@
-
-// Fix: Change React import to namespace import to resolve JSX typing issues.
-import * as React from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 

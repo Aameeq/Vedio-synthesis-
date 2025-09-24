@@ -1,5 +1,4 @@
-
-// Fix: Change React import to namespace import to resolve JSX typing issues.
+// Fix: Changed React import to a namespace import to resolve JSX intrinsic element errors.
 import * as React from 'react';
 import { CameraAction } from '../types';
 
@@ -43,7 +42,7 @@ const Controls: React.FC<ControlsProps> = ({ onAction, isDisabled }) => {
         <ControlButton label="Pan Right (D)" action={CameraAction.PAN_RIGHT} onAction={onAction} isDisabled={isDisabled} iconPath="M9 18l6-6-6-6" />
          <div className="flex flex-col gap-1.5">
             <ControlButton label="Zoom In (E)" action={CameraAction.ZOOM_IN} onAction={onAction} isDisabled={isDisabled} iconPath="M11 19V5 M5 12h14 M12 5l-4 4 M12 5l4 4" />
-            <ControlButton label="Zoom Out (Q)" action={CameraAction.ZOOM_OUT} onAction={onAction} isDisabled={isDisabled} iconPath="M11 5v14 M5 12h14 M12 19l-4-4 M12 19l4-4" />
+            <ControlButton label="Zoom Out (Q)" action={CameraAction.ZOOM_OUT} onAction={onAction} isDisabled={isDisabled} iconPath="M11 5v14 M5 12h14 M12 19l-4-4 M12 19l4 4" />
         </div>
     </div>
   );

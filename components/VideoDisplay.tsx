@@ -1,5 +1,4 @@
-
-// Fix: Change React import to namespace import to resolve JSX typing issues.
+// Fix: Changed React import to a namespace import to resolve JSX intrinsic element errors.
 import * as React from 'react';
 import * as THREE from 'three';
 import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
@@ -24,7 +23,6 @@ interface VideoDisplayProps {
 
 const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
   const { videoUrl, stereoVideoUrls, audioUrl, frameUrl, onVideoEnd, isLoading, isReady, isStereo, onSave, onAddAmbiance, isGeneratingAudio, audioDescription } = props;
-  // Fix: Use namespace import for React hooks.
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const vrButtonContainerRef = React.useRef<HTMLDivElement>(null);
@@ -36,7 +34,6 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Fix: Use namespace import for React hooks.
   const handleVideoEndCallback = React.useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -51,7 +48,6 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
     }
   }, [onVideoEnd]);
 
-  // Fix: Use namespace import for React hooks.
   React.useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -64,7 +60,6 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
   }, [videoUrl, stereoVideoUrls, handleVideoEndCallback]);
   
   // --- WebXR Logic ---
-  // Fix: Use namespace import for React hooks.
   React.useEffect(() => {
     if (!vrButtonContainerRef.current || (!videoUrl && !stereoVideoUrls)) return;
 
@@ -318,13 +313,13 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
           <video
             ref={videoRef}
             src={videoUrl ?? stereoVideoUrls?.left}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-contain max-h-[calc(100vh-6rem)]"
             autoPlay
             playsInline
             controls={false}
           />
         ) : frameUrl ? (
-          <img src={frameUrl} alt="Current scene" className="w-full h-full object-contain" />
+          <img src={frameUrl} alt="Current scene" className="w-full h-full object-contain max-h-[calc(100vh-6rem)]" />
         ) : null}
         
         {audioUrl && <audio ref={audioRef} src={audioUrl} autoPlay loop />}

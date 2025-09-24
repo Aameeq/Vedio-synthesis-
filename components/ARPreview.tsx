@@ -1,5 +1,4 @@
-
-// Fix: Change React import to namespace import to resolve JSX typing issues.
+// Fix: Changed React import to a namespace import to resolve JSX intrinsic element errors.
 import * as React from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -22,7 +21,6 @@ const ANCHOR_POINTS: { [key in AnchorPoint]: number } = {
 };
 
 const ARPreview: React.FC<ARPreviewProps> = ({ modelFile, stream, transform, anchorPoint, setTransform }) => {
-    // Fix: Use namespace import for React hooks.
     const videoRef = React.useRef<HTMLVideoElement>(null);
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const sceneRef = React.useRef(new THREE.Scene());
@@ -34,7 +32,6 @@ const ARPreview: React.FC<ARPreviewProps> = ({ modelFile, stream, transform, anc
     const lastVideoTimeRef = React.useRef(-1);
     const [isInitialized, setIsInitialized] = React.useState(false);
 
-    // Fix: Use namespace import for React hooks.
     React.useEffect(() => {
         const init = async () => {
             try {
@@ -73,7 +70,6 @@ const ARPreview: React.FC<ARPreviewProps> = ({ modelFile, stream, transform, anc
         init();
     }, []);
 
-    // Fix: Use namespace import for React hooks.
     React.useEffect(() => {
         if (!modelFile) return;
 
@@ -97,7 +93,6 @@ const ARPreview: React.FC<ARPreviewProps> = ({ modelFile, stream, transform, anc
         return () => URL.revokeObjectURL(objectUrl);
     }, [modelFile]);
 
-    // Fix: Use namespace import for React hooks.
     React.useEffect(() => {
         if (!isInitialized || !stream || !videoRef.current) return;
         

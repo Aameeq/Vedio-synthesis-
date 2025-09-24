@@ -1,5 +1,3 @@
-
-// Fix: Change React import to namespace import to resolve JSX typing issues.
 import * as React from 'react';
 import Header from './components/Header';
 import WorldBuilder from './pages/WorldBuilder';
@@ -9,10 +7,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 type Route = 'world-builder' | 'ar-forge';
 
 const App: React.FC = () => {
-  // Fix: Use namespace import for React hooks.
   const [route, setRoute] = React.useState<Route>('world-builder');
 
-  // Fix: Use namespace import for React hooks.
   React.useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#/', '');

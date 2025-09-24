@@ -1,5 +1,4 @@
-
-// Fix: Change React import to namespace import to resolve JSX typing issues.
+// Fix: Changed React import to a namespace import to resolve JSX intrinsic element errors.
 import * as React from 'react';
 import ModelViewer from '../components/ModelViewer';
 import ARPreview from '../components/ARPreview';
@@ -11,7 +10,6 @@ import { generate3DModel, generateArTutorial } from '../services/geminiService';
 import TutorialModal from '../components/TutorialModal';
 
 const ARForge: React.FC = () => {
-    // Fix: Use namespace import for React hooks.
     const [modelFile, setModelFile] = React.useState<File | null>(null);
     const [modelSrc, setModelSrc] = React.useState<string | null>(null);
     const [stream, setStream] = React.useState<MediaStream | null>(null);
@@ -32,7 +30,6 @@ const ARForge: React.FC = () => {
     const [tutorialTitle, setTutorialTitle] = React.useState<string>('');
     const [isGeneratingTutorial, setIsGeneratingTutorial] = React.useState<boolean>(false);
 
-    // Fix: Use namespace import for React hooks.
     React.useEffect(() => {
         // Stop camera stream on component unmount or when exiting live mode
         return () => {

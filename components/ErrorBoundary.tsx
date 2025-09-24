@@ -1,8 +1,6 @@
-
-// Fix: Change React import to namespace import to resolve component, props, state, and JSX typing issues.
+// Fix: Changed React import to a namespace import to resolve errors with component properties and JSX intrinsic elements.
 import * as React from "react";
 
-// Fix: Add explicit interfaces for props and state to ensure type safety.
 interface ErrorBoundaryProps {
   children: React.ReactNode;
 }
@@ -22,7 +20,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: any, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 
@@ -38,9 +36,3 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return this.props.children;
   }
 }
-
-/*
-Note: The original file had a default export. This has been changed to a named export
-as requested by the user's new App.tsx implementation.
-To use this, you'll need `import { ErrorBoundary } from './components/ErrorBoundary';`
-*/
