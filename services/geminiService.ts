@@ -1,5 +1,6 @@
 
 
+
 import { GoogleGenAI, Modality } from "@google/genai";
 import { CameraAction } from '../types';
 import { VEO_PROMPT_TEMPLATE, LOADING_MESSAGES } from "../constants";
@@ -53,7 +54,7 @@ export const editImage = async (base64Image: string, prompt: string, styleRefere
     
     // Fix: Explicitly type the 'parts' array to allow both image ({inlineData: ...}) and text ({text: ...}) parts.
     // TypeScript was inferring the type from only the first element, causing an error when a text part was pushed.
-    const parts: ({ inlineData: { data: string; mimeType: string; }; } | { text: string; })[] = [
+    const parts: ({ inlineData: { data: string; mimeType: string; }; text?: undefined; } | { text: string; inlineData?: undefined; })[] = [
         { inlineData: { data: mainImageParts.data, mimeType: mainImageParts.mimeType } },
     ];
     
@@ -68,7 +69,7 @@ export const editImage = async (base64Image: string, prompt: string, styleRefere
 
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: parts },
+        contents: { parts: parts as any },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
         },
@@ -128,9 +129,20 @@ export const generateTransitionVideo = async (
     
     clearInterval(interval);
 
+    if (operation.error) {
+        console.error("Video generation operation failed:", operation.error);
+        let userMessage = `API Error: ${operation.error.message} (code: ${operation.error.code})`;
+        if (String(operation.error.message).toLowerCase().includes('prompt was blocked')) {
+            userMessage = "The transition prompt was rejected for safety reasons. Please try a different and safer prompt.";
+        } else if (String(operation.error.message).toLowerCase().includes('invalid')) {
+             userMessage = "The transition request was invalid. This can happen if the prompt is too complex or conflicting. Try simplifying your prompt.";
+        }
+        throw new Error(userMessage);
+    }
+
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!downloadLink) {
-        throw new Error("Video generation completed, but no download link was found.");
+        throw new Error("Video generation finished without producing a video. This might be due to a highly complex or unusual transition prompt. Please try modifying your request.");
     }
 
     const videoUrl = `${downloadLink}&key=${process.env.API_KEY}`;
@@ -180,9 +192,20 @@ export const generateNextVideo = async (
     
     clearInterval(interval);
 
+    if (operation.error) {
+        console.error("Video generation operation failed:", operation.error);
+        let userMessage = `API Error: ${operation.error.message} (code: ${operation.error.code})`;
+        if (String(operation.error.message).toLowerCase().includes('prompt was blocked')) {
+            userMessage = "The prompt was rejected for safety reasons. Please try a different and safer prompt.";
+        } else if (String(operation.error.message).toLowerCase().includes('invalid')) {
+             userMessage = "The request was invalid. This can happen if the prompt is too complex or conflicting. Try simplifying your prompt.";
+        }
+        throw new Error(userMessage);
+    }
+
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!downloadLink) {
-        throw new Error("Video generation completed, but no download link was found.");
+        throw new Error("Video generation finished without producing a video. This might be due to a highly complex or unusual prompt. Please try modifying your request.");
     }
 
     const videoUrl = `${downloadLink}&key=${process.env.API_KEY}`;

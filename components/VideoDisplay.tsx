@@ -1,4 +1,5 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+// Fix: Change React import to namespace import to resolve JSX and hook typing issues.
+import * as React from 'react';
 import * as THREE from 'three';
 import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
 import DownloadButton from './DownloadButton';
@@ -22,9 +23,10 @@ interface VideoDisplayProps {
 
 const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
   const { videoUrl, stereoVideoUrls, audioUrl, frameUrl, onVideoEnd, isLoading, isReady, isStereo, onSave, onAddAmbiance, isGeneratingAudio, audioDescription } = props;
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const vrButtonContainerRef = useRef<HTMLDivElement>(null);
+  // Fix: Prefix hooks with React.
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+  const vrButtonContainerRef = React.useRef<HTMLDivElement>(null);
 
   const formatTime = (time: number) => {
     if (isNaN(time) || time === Infinity) return '00:00';
@@ -33,7 +35,8 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handleVideoEndCallback = useCallback(() => {
+  // Fix: Prefix hooks with React.
+  const handleVideoEndCallback = React.useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
 
@@ -47,7 +50,8 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
     }
   }, [onVideoEnd]);
 
-  useEffect(() => {
+  // Fix: Prefix hooks with React.
+  React.useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
@@ -59,7 +63,8 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
   }, [videoUrl, stereoVideoUrls, handleVideoEndCallback]);
   
   // --- WebXR Logic ---
-  useEffect(() => {
+  // Fix: Prefix hooks with React.
+  React.useEffect(() => {
     if (!vrButtonContainerRef.current || (!videoUrl && !stereoVideoUrls)) return;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });

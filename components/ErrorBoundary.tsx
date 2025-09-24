@@ -1,4 +1,5 @@
-import React from "react";
+// Fix: Change React import to namespace import to resolve JSX, props, and state typing issues.
+import * as React from "react";
 
 export class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean; error: any}> {
   constructor(props: any) {

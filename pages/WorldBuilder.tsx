@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+// Fix: Change React import to namespace import to resolve JSX and hook typing issues.
+import * as React from 'react';
 import {
     generateInitialImage,
     generateNextVideo,
@@ -40,39 +41,41 @@ const InfoTooltip: React.FC = () => (
 
 const WorldBuilder: React.FC = () => {
     // Input & Prompts State
-    const [prompt, setPrompt] = useState<string>('');
-    const [initialPrompt, setInitialPrompt] = useState<string>('');
-    const [animationPrompt, setAnimationPrompt] = useState<string>('');
-    const [editPrompt, setEditPrompt] = useState<string>('');
+    // Fix: Prefix hooks with React.
+    const [prompt, setPrompt] = React.useState<string>('');
+    const [initialPrompt, setInitialPrompt] = React.useState<string>('');
+    const [animationPrompt, setAnimationPrompt] = React.useState<string>('');
+    const [editPrompt, setEditPrompt] = React.useState<string>('');
 
     // Loading & Error State
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [isImprovising, setIsImprovising] = useState<boolean>(false);
-    const [loadingMessage, setLoadingMessage] = useState<string>('');
-    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = React.useState<boolean>(false);
+    const [isImprovising, setIsImprovising] = React.useState<boolean>(false);
+    const [loadingMessage, setLoadingMessage] = React.useState<string>('');
+    const [error, setError] = React.useState<string | null>(null);
 
     // Media & Scene State
-    const [currentFrame, setCurrentFrame] = useState<string | null>(null);
-    const [videoUrl, setVideoUrl] = useState<string | null>(null);
-    const [stereoVideoUrls, setStereoVideoUrls] = useState<{ left: string; right: string } | null>(null);
-    const [audioUrl, setAudioUrl] = useState<string | null>(null);
-    const [audioDescription, setAudioDescription] = useState<string | null>(null);
-    const [isGeneratingAudio, setIsGeneratingAudio] = useState<boolean>(false);
+    const [currentFrame, setCurrentFrame] = React.useState<string | null>(null);
+    const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
+    const [stereoVideoUrls, setStereoVideoUrls] = React.useState<{ left: string; right: string } | null>(null);
+    const [audioUrl, setAudioUrl] = React.useState<string | null>(null);
+    const [audioDescription, setAudioDescription] = React.useState<string | null>(null);
+    const [isGeneratingAudio, setIsGeneratingAudio] = React.useState<boolean>(false);
 
     // App Mode & Controls State
-    const [appMode, setAppMode] = useState<AppMode>(AppMode.CAMERA);
-    const [isStereo, setIsStereo] = useState<boolean>(false);
-    const [isStyleLocked, setIsStyleLocked] = useState<boolean>(false); // For future use
+    const [appMode, setAppMode] = React.useState<AppMode>(AppMode.CAMERA);
+    const [isStereo, setIsStereo] = React.useState<boolean>(false);
+    const [isStyleLocked, setIsStyleLocked] = React.useState<boolean>(false); // For future use
 
     // Library & Tools State
-    const [savedWorlds, setSavedWorlds] = useState<SavedWorld[]>([]);
-    const [isLibraryOpen, setIsLibraryOpen] = useState<boolean>(false);
+    const [savedWorlds, setSavedWorlds] = React.useState<SavedWorld[]>([]);
+    const [isLibraryOpen, setIsLibraryOpen] = React.useState<boolean>(false);
 
     const isReady = !!currentFrame && !isLoading;
-    const actionQueue = useRef<CameraAction[]>([]).current;
+    const actionQueue = React.useRef<CameraAction[]>([]).current;
     
     // Cleanup old video URLs to prevent memory leaks
-    useEffect(() => {
+    // Fix: Prefix hooks with React.
+    React.useEffect(() => {
         return () => {
             if (videoUrl) URL.revokeObjectURL(videoUrl);
             if (stereoVideoUrls) {
@@ -85,7 +88,8 @@ const WorldBuilder: React.FC = () => {
     const dismissError = () => setError(null);
 
     // Load saved worlds on mount and set up global event listeners
-    useEffect(() => {
+    // Fix: Prefix hooks with React.
+    React.useEffect(() => {
         setSavedWorlds(getSavedWorlds());
         const handleOpenLibrary = () => setIsLibraryOpen(true);
         document.addEventListener('open-library', handleOpenLibrary);
@@ -96,7 +100,8 @@ const WorldBuilder: React.FC = () => {
     }, []);
 
     // Keyboard controls for camera movement
-    useEffect(() => {
+    // Fix: Prefix hooks with React.
+    React.useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (!isReady || appMode !== AppMode.CAMERA || document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) return;
             const action = KEY_MAP[event.key.toUpperCase()];
@@ -135,7 +140,8 @@ const WorldBuilder: React.FC = () => {
         }
     };
     
-    const handleAction = useCallback(async (action: CameraAction) => {
+    // Fix: Prefix hooks with React.
+    const handleAction = React.useCallback(async (action: CameraAction) => {
         if (!currentFrame || isLoading) return;
 
         setIsLoading(true);
@@ -157,15 +163,16 @@ const WorldBuilder: React.FC = () => {
                 setVideoUrl(url);
             }
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Video generation failed: ${message}';
-            setError(`Video generation failed: ${message}`);
+            const message = err instanceof Error ? err.message : 'An unknown error occurred during video generation.';
+            setError(message);
             console.error(err);
         } finally {
             setIsLoading(false);
         }
     }, [currentFrame, isLoading, isStereo, animationPrompt, isStyleLocked, videoUrl, stereoVideoUrls]);
 
-    const processActionQueue = useCallback(() => {
+    // Fix: Prefix hooks with React.
+    const processActionQueue = React.useCallback(() => {
         if (actionQueue.length > 0) {
             const nextAction = actionQueue.shift();
             if (nextAction) {
@@ -183,7 +190,8 @@ const WorldBuilder: React.FC = () => {
         }
     };
 
-    const handleVideoEnd = useCallback((lastFrameDataUrl: string) => {
+    // Fix: Prefix hooks with React.
+    const handleVideoEnd = React.useCallback((lastFrameDataUrl: string) => {
         setCurrentFrame(lastFrameDataUrl);
         
         setIsLoading(false);
@@ -289,7 +297,7 @@ const WorldBuilder: React.FC = () => {
     };
 
     const renderInitialView = () => (
-        <div className="flex-grow flex items-center justify-center p-4">
+        <div className="w-full h-full flex items-center justify-center p-4">
             {isLibraryOpen && (
                 <AssetLibrary 
                     worlds={savedWorlds} 
@@ -330,7 +338,7 @@ const WorldBuilder: React.FC = () => {
     );
 
     const renderWorldView = () => (
-        <div className="flex-grow w-full relative">
+        <div className="w-full h-full relative flex flex-col bg-brand-dark-secondary">
             {error && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl">
                      <ErrorDisplay message={error} onDismiss={dismissError} />
@@ -346,24 +354,28 @@ const WorldBuilder: React.FC = () => {
                 />
             )}
             
-            <VideoDisplay
-                videoUrl={videoUrl}
-                stereoVideoUrls={stereoVideoUrls}
-                audioUrl={audioUrl}
-                frameUrl={currentFrame}
-                onVideoEnd={handleVideoEnd}
-                isLoading={isLoading}
-                isReady={isReady}
-                isStereo={isStereo}
-                onSave={handleSaveWorld}
-                onAddAmbiance={handleAddAmbiance}
-                isGeneratingAudio={isGeneratingAudio}
-                audioDescription={audioDescription}
-            />
+            {/* The main content area that will be "under" the fixed controls */}
+            <div className="flex-grow w-full h-full">
+                <VideoDisplay
+                    videoUrl={videoUrl}
+                    stereoVideoUrls={stereoVideoUrls}
+                    audioUrl={audioUrl}
+                    frameUrl={currentFrame}
+                    onVideoEnd={handleVideoEnd}
+                    isLoading={isLoading}
+                    isReady={isReady}
+                    isStereo={isStereo}
+                    onSave={handleSaveWorld}
+                    onAddAmbiance={handleAddAmbiance}
+                    isGeneratingAudio={isGeneratingAudio}
+                    audioDescription={audioDescription}
+                />
+            </div>
 
             {isLoading && <Loader message={loadingMessage} />}
-
-            <div className="absolute bottom-0 left-0 right-0 z-30 flex justify-center py-3 bg-gradient-to-t from-black/50 to-transparent">
+            
+            {/* The fixed control bar that is always visible at the bottom of the viewport */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center py-3 bg-gradient-to-t from-black/50 to-transparent animate-fadeIn">
                 <div className="p-2 bg-brand-dark/40 backdrop-blur-sm rounded-full flex items-center gap-4 shadow-lg border border-slate-700/50">
                     <ModeToggle currentMode={appMode} onModeChange={handleModeChange} isDisabled={!isReady} />
                     <div className="w-px h-8 bg-slate-600" />
@@ -389,7 +401,7 @@ const WorldBuilder: React.FC = () => {
     );
 
     return (
-      <div className="absolute inset-0 flex flex-col bg-brand-dark-secondary">
+      <div className="w-full h-full flex flex-col bg-brand-dark-secondary">
         {currentFrame ? renderWorldView() : renderInitialView()}
       </div>
     );

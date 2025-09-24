@@ -1,4 +1,5 @@
-import React from 'react';
+// Fix: Change React import to namespace import to resolve JSX typing issues.
+import * as React from 'react';
 import { AnchorPoint, Transform } from '../types';
 import { DEFAULT_TRANSFORM } from '../constants';
 

@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+// Fix: Change React import to namespace import to resolve JSX and hook typing issues.
+import * as React from 'react';
 import ModelViewer from '../components/ModelViewer';
 import ARPreview from '../components/ARPreview';
 import ARControls from '../components/ARControls';
@@ -9,27 +10,29 @@ import { generate3DModel, generateArTutorial } from '../services/geminiService';
 import TutorialModal from '../components/TutorialModal';
 
 const ARForge: React.FC = () => {
-    const [modelFile, setModelFile] = useState<File | null>(null);
-    const [modelSrc, setModelSrc] = useState<string | null>(null);
-    const [stream, setStream] = useState<MediaStream | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    // Fix: Prefix hooks with React.
+    const [modelFile, setModelFile] = React.useState<File | null>(null);
+    const [modelSrc, setModelSrc] = React.useState<string | null>(null);
+    const [stream, setStream] = React.useState<MediaStream | null>(null);
+    const [error, setError] = React.useState<string | null>(null);
     
-    const [arMode, setArMode] = useState<'setup' | 'live'>('setup');
-    const [transform, setTransform] = useState<Transform>(DEFAULT_TRANSFORM);
-    const [anchorPoint, setAnchorPoint] = useState<AnchorPoint>('head');
+    const [arMode, setArMode] = React.useState<'setup' | 'live'>('setup');
+    const [transform, setTransform] = React.useState<Transform>(DEFAULT_TRANSFORM);
+    const [anchorPoint, setAnchorPoint] = React.useState<AnchorPoint>('head');
     
-    const [assetSourceTab, setAssetSourceTab] = useState<'generate' | 'upload'>('generate');
-    const [generationPrompt, setGenerationPrompt] = useState<string>('a sci-fi astronaut helmet');
-    const [isGeneratingModel, setIsGeneratingModel] = useState<boolean>(false);
-    const [generationImage, setGenerationImage] = useState<File | null>(null);
-    const [generationImagePreview, setGenerationImagePreview] = useState<string | null>(null);
-    const generationImagePreviewRef = useRef<string | null>(null);
+    const [assetSourceTab, setAssetSourceTab] = React.useState<'generate' | 'upload'>('generate');
+    const [generationPrompt, setGenerationPrompt] = React.useState<string>('a sci-fi astronaut helmet');
+    const [isGeneratingModel, setIsGeneratingModel] = React.useState<boolean>(false);
+    const [generationImage, setGenerationImage] = React.useState<File | null>(null);
+    const [generationImagePreview, setGenerationImagePreview] = React.useState<string | null>(null);
+    const generationImagePreviewRef = React.useRef<string | null>(null);
     
-    const [tutorialContent, setTutorialContent] = useState<string | null>(null);
-    const [tutorialTitle, setTutorialTitle] = useState<string>('');
-    const [isGeneratingTutorial, setIsGeneratingTutorial] = useState<boolean>(false);
+    const [tutorialContent, setTutorialContent] = React.useState<string | null>(null);
+    const [tutorialTitle, setTutorialTitle] = React.useState<string>('');
+    const [isGeneratingTutorial, setIsGeneratingTutorial] = React.useState<boolean>(false);
 
-    useEffect(() => {
+    // Fix: Prefix hooks with React.
+    React.useEffect(() => {
         // Stop camera stream on component unmount or when exiting live mode
         return () => {
             stream?.getTracks().forEach(track => track.stop());

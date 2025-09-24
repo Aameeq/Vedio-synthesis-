@@ -1,4 +1,5 @@
-import React from 'react';
+// Fix: Change React import to namespace import to resolve JSX typing issues.
+import * as React from 'react';
 
 // Fix: Add type definitions for the <model-viewer> custom element to the global JSX namespace.
 // This allows TypeScript to recognize the element and its properties in JSX, resolving the error.
