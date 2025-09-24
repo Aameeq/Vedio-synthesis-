@@ -1,6 +1,6 @@
 
-// Fix: Use standard React default import to resolve component, props, state, and JSX typing issues.
-import React from "react";
+// Fix: Change React import to namespace import to resolve component, props, state, and JSX typing issues.
+import * as React from "react";
 
 // Fix: Add explicit interfaces for props and state to ensure type safety.
 interface ErrorBoundaryProps {

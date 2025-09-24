@@ -1,6 +1,6 @@
 
-// Fix: Use standard React default import to resolve JSX typing issues.
-import React from 'react';
+// Fix: Change React import to namespace import to resolve JSX typing issues.
+import * as React from 'react';
 
 interface StereoToggleProps {
   isEnabled: boolean;
