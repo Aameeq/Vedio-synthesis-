@@ -1,5 +1,6 @@
+
 // Fix: Change React import to namespace import to resolve JSX and hook typing issues.
-import * as React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
@@ -22,19 +23,19 @@ const ANCHOR_POINTS: { [key in AnchorPoint]: number } = {
 
 const ARPreview: React.FC<ARPreviewProps> = ({ modelFile, stream, transform, anchorPoint, setTransform }) => {
     // Fix: Prefix hooks with React.
-    const videoRef = React.useRef<HTMLVideoElement>(null);
-    const canvasRef = React.useRef<HTMLCanvasElement>(null);
-    const sceneRef = React.useRef(new THREE.Scene());
-    const cameraRef = React.useRef<THREE.PerspectiveCamera | null>(null);
-    const rendererRef = React.useRef<THREE.WebGLRenderer | null>(null);
-    const modelRef = React.useRef<THREE.Group | null>(null);
-    const faceLandmarkerRef = React.useRef<FaceLandmarker | null>(null);
-    const animationFrameId = React.useRef<number | null>(null);
-    const lastVideoTimeRef = React.useRef(-1);
-    const [isInitialized, setIsInitialized] = React.useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const sceneRef = useRef(new THREE.Scene());
+    const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+    const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+    const modelRef = useRef<THREE.Group | null>(null);
+    const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
+    const animationFrameId = useRef<number | null>(null);
+    const lastVideoTimeRef = useRef(-1);
+    const [isInitialized, setIsInitialized] = useState(false);
 
     // Fix: Prefix hooks with React.
-    React.useEffect(() => {
+    useEffect(() => {
         const init = async () => {
             try {
                 const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
@@ -73,7 +74,7 @@ const ARPreview: React.FC<ARPreviewProps> = ({ modelFile, stream, transform, anc
     }, []);
 
     // Fix: Prefix hooks with React.
-    React.useEffect(() => {
+    useEffect(() => {
         if (!modelFile) return;
 
         if (modelRef.current) {
@@ -97,7 +98,7 @@ const ARPreview: React.FC<ARPreviewProps> = ({ modelFile, stream, transform, anc
     }, [modelFile]);
 
     // Fix: Prefix hooks with React.
-    React.useEffect(() => {
+    useEffect(() => {
         if (!isInitialized || !stream || !videoRef.current) return;
         
         const video = videoRef.current;

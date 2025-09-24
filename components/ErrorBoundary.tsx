@@ -1,13 +1,24 @@
-// Fix: Change React import to namespace import to resolve JSX, props, and state typing issues.
-import * as React from "react";
 
-export class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean; error: any}> {
-  constructor(props: any) {
+// Fix: Change React import to namespace import to resolve JSX, props, and state typing issues.
+import React from "react";
+
+// Fix: Add explicit interfaces for props and state to ensure type safety.
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: any;
+}
+
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error: any) {
+  static getDerivedStateFromError(error: any): ErrorBoundaryState {
     return { hasError: true, error };
   }
 

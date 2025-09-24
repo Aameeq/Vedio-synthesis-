@@ -1,5 +1,6 @@
-// Fix: Change React import to namespace import to resolve JSX typing issues.
-import * as React from 'react';
+
+// Fix: Changed React import to default import to resolve JSX typing issues.
+import React from 'react';
 import { AppMode } from '../types';
 
 interface ModeToggleProps {
