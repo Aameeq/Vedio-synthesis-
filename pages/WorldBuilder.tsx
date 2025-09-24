@@ -1,6 +1,6 @@
 
-// Fix: Change React import to namespace import to resolve JSX and hook typing issues.
-import * as React from 'react';
+// Fix: Use standard React imports to resolve JSX and hook typing issues.
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     generateInitialImage,
     generateNextVideo,
@@ -42,41 +42,41 @@ const InfoTooltip: React.FC = () => (
 
 const WorldBuilder: React.FC = () => {
     // Input & Prompts State
-    // Fix: Prefix hooks with React.
-    const [prompt, setPrompt] = React.useState<string>('');
-    const [initialPrompt, setInitialPrompt] = React.useState<string>('');
-    const [animationPrompt, setAnimationPrompt] = React.useState<string>('');
-    const [editPrompt, setEditPrompt] = React.useState<string>('');
+    // Fix: Use hooks directly.
+    const [prompt, setPrompt] = useState<string>('');
+    const [initialPrompt, setInitialPrompt] = useState<string>('');
+    const [animationPrompt, setAnimationPrompt] = useState<string>('');
+    const [editPrompt, setEditPrompt] = useState<string>('');
 
     // Loading & Error State
-    const [isLoading, setIsLoading] = React.useState<boolean>(false);
-    const [isImprovising, setIsImprovising] = React.useState<boolean>(false);
-    const [loadingMessage, setLoadingMessage] = React.useState<string>('');
-    const [error, setError] = React.useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isImprovising, setIsImprovising] = useState<boolean>(false);
+    const [loadingMessage, setLoadingMessage] = useState<string>('');
+    const [error, setError] = useState<string | null>(null);
 
     // Media & Scene State
-    const [currentFrame, setCurrentFrame] = React.useState<string | null>(null);
-    const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
-    const [stereoVideoUrls, setStereoVideoUrls] = React.useState<{ left: string; right: string } | null>(null);
-    const [audioUrl, setAudioUrl] = React.useState<string | null>(null);
-    const [audioDescription, setAudioDescription] = React.useState<string | null>(null);
-    const [isGeneratingAudio, setIsGeneratingAudio] = React.useState<boolean>(false);
+    const [currentFrame, setCurrentFrame] = useState<string | null>(null);
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+    const [stereoVideoUrls, setStereoVideoUrls] = useState<{ left: string; right: string } | null>(null);
+    const [audioUrl, setAudioUrl] = useState<string | null>(null);
+    const [audioDescription, setAudioDescription] = useState<string | null>(null);
+    const [isGeneratingAudio, setIsGeneratingAudio] = useState<boolean>(false);
 
     // App Mode & Controls State
-    const [appMode, setAppMode] = React.useState<AppMode>(AppMode.CAMERA);
-    const [isStereo, setIsStereo] = React.useState<boolean>(false);
-    const [isStyleLocked, setIsStyleLocked] = React.useState<boolean>(false); // For future use
+    const [appMode, setAppMode] = useState<AppMode>(AppMode.CAMERA);
+    const [isStereo, setIsStereo] = useState<boolean>(false);
+    const [isStyleLocked, setIsStyleLocked] = useState<boolean>(false); // For future use
 
     // Library & Tools State
-    const [savedWorlds, setSavedWorlds] = React.useState<SavedWorld[]>([]);
-    const [isLibraryOpen, setIsLibraryOpen] = React.useState<boolean>(false);
+    const [savedWorlds, setSavedWorlds] = useState<SavedWorld[]>([]);
+    const [isLibraryOpen, setIsLibraryOpen] = useState<boolean>(false);
 
     const isReady = !!currentFrame && !isLoading;
-    const actionQueue = React.useRef<CameraAction[]>([]).current;
+    const actionQueue = useRef<CameraAction[]>([]).current;
     
     // Cleanup old video URLs to prevent memory leaks
-    // Fix: Prefix hooks with React.
-    React.useEffect(() => {
+    // Fix: Use hooks directly.
+    useEffect(() => {
         return () => {
             if (videoUrl) URL.revokeObjectURL(videoUrl);
             if (stereoVideoUrls) {
@@ -89,8 +89,8 @@ const WorldBuilder: React.FC = () => {
     const dismissError = () => setError(null);
 
     // Load saved worlds on mount and set up global event listeners
-    // Fix: Prefix hooks with React.
-    React.useEffect(() => {
+    // Fix: Use hooks directly.
+    useEffect(() => {
         setSavedWorlds(getSavedWorlds());
         const handleOpenLibrary = () => setIsLibraryOpen(true);
         document.addEventListener('open-library', handleOpenLibrary);
@@ -101,8 +101,8 @@ const WorldBuilder: React.FC = () => {
     }, []);
 
     // Keyboard controls for camera movement
-    // Fix: Prefix hooks with React.
-    React.useEffect(() => {
+    // Fix: Use hooks directly.
+    useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (!isReady || appMode !== AppMode.CAMERA || document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) return;
             const action = KEY_MAP[event.key.toUpperCase()];
@@ -141,8 +141,8 @@ const WorldBuilder: React.FC = () => {
         }
     };
     
-    // Fix: Prefix hooks with React.
-    const handleAction = React.useCallback(async (action: CameraAction) => {
+    // Fix: Use hooks directly.
+    const handleAction = useCallback(async (action: CameraAction) => {
         if (!currentFrame || isLoading) return;
 
         setIsLoading(true);
@@ -172,8 +172,8 @@ const WorldBuilder: React.FC = () => {
         }
     }, [currentFrame, isLoading, isStereo, animationPrompt, isStyleLocked, videoUrl, stereoVideoUrls]);
 
-    // Fix: Prefix hooks with React.
-    const processActionQueue = React.useCallback(() => {
+    // Fix: Use hooks directly.
+    const processActionQueue = useCallback(() => {
         if (actionQueue.length > 0) {
             const nextAction = actionQueue.shift();
             if (nextAction) {
@@ -191,8 +191,8 @@ const WorldBuilder: React.FC = () => {
         }
     };
 
-    // Fix: Prefix hooks with React.
-    const handleVideoEnd = React.useCallback((lastFrameDataUrl: string) => {
+    // Fix: Use hooks directly.
+    const handleVideoEnd = useCallback((lastFrameDataUrl: string) => {
         setCurrentFrame(lastFrameDataUrl);
         
         setIsLoading(false);
@@ -340,7 +340,7 @@ const WorldBuilder: React.FC = () => {
     );
 
     const renderWorldView = () => (
-        <div className="w-full h-full relative bg-brand-dark-secondary pb-28">
+        <div className="w-full h-full relative bg-brand-dark-secondary pb-24">
             {error && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl">
                      <ErrorDisplay message={error} onDismiss={dismissError} />

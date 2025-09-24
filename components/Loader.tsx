@@ -1,6 +1,6 @@
 
-// Fix: Changed React import to a namespace import to resolve JSX typing issues.
-import * as React from 'react';
+// Fix: Use standard React default import to resolve JSX typing issues.
+import React from 'react';
 
 interface LoaderProps {
   message: string;

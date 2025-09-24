@@ -1,6 +1,6 @@
 
-// Fix: Change React import to namespace import to resolve JSX and hook typing issues.
-import * as React from 'react';
+// Fix: Use standard React imports to resolve JSX and hook typing issues.
+import React, { useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
 import DownloadButton from './DownloadButton';
@@ -24,10 +24,10 @@ interface VideoDisplayProps {
 
 const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
   const { videoUrl, stereoVideoUrls, audioUrl, frameUrl, onVideoEnd, isLoading, isReady, isStereo, onSave, onAddAmbiance, isGeneratingAudio, audioDescription } = props;
-  // Fix: Prefix hooks with React.
-  const videoRef = React.useRef<HTMLVideoElement | null>(null);
-  const audioRef = React.useRef<HTMLAudioElement>(null);
-  const vrButtonContainerRef = React.useRef<HTMLDivElement>(null);
+  // Fix: Use hooks directly.
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const vrButtonContainerRef = useRef<HTMLDivElement>(null);
 
   const formatTime = (time: number) => {
     if (isNaN(time) || time === Infinity) return '00:00';
@@ -36,8 +36,8 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Fix: Prefix hooks with React.
-  const handleVideoEndCallback = React.useCallback(() => {
+  // Fix: Use hooks directly.
+  const handleVideoEndCallback = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
 
@@ -51,8 +51,8 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
     }
   }, [onVideoEnd]);
 
-  // Fix: Prefix hooks with React.
-  React.useEffect(() => {
+  // Fix: Use hooks directly.
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
@@ -64,8 +64,8 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
   }, [videoUrl, stereoVideoUrls, handleVideoEndCallback]);
   
   // --- WebXR Logic ---
-  // Fix: Prefix hooks with React.
-  React.useEffect(() => {
+  // Fix: Use hooks directly.
+  useEffect(() => {
     if (!vrButtonContainerRef.current || (!videoUrl && !stereoVideoUrls)) return;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });

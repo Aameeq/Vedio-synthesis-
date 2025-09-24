@@ -1,6 +1,6 @@
 
-// Fix: Change React import to namespace import to resolve JSX and hook typing issues.
-import * as React from 'react';
+// Fix: Use standard React imports to resolve JSX and hook typing issues.
+import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import WorldBuilder from './pages/WorldBuilder';
 import ARForge from './pages/ARForge';
@@ -9,11 +9,11 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 type Route = 'world-builder' | 'ar-forge';
 
 const App: React.FC = () => {
-  // Fix: Prefix useState with React.
-  const [route, setRoute] = React.useState<Route>('world-builder');
+  // Fix: Use useState hook directly.
+  const [route, setRoute] = useState<Route>('world-builder');
 
-  // Fix: Prefix useEffect with React.
-  React.useEffect(() => {
+  // Fix: Use useEffect hook directly.
+  useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#/', '');
       if (hash === 'ar-forge') {
