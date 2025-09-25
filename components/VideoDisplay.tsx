@@ -309,18 +309,20 @@ const VideoDisplay: React.FC<VideoDisplayProps> = (props) => {
   return (
     <div className="w-full h-full flex items-center justify-center bg-black">
       <div className="w-full h-full relative">
-        {showVideo ? (
-          <video
-            ref={videoRef}
-            src={videoUrl ?? stereoVideoUrls?.left}
-            className="w-full h-full object-contain max-h-[calc(100vh-6rem)]"
-            autoPlay
-            playsInline
-            controls={false}
-          />
-        ) : frameUrl ? (
-          <img src={frameUrl} alt="Current scene" className="w-full h-full object-contain max-h-[calc(100vh-6rem)]" />
-        ) : null}
+        <div className="w-full h-full pb-24">
+            {showVideo ? (
+              <video
+                ref={videoRef}
+                src={videoUrl ?? stereoVideoUrls?.left}
+                className="w-full h-full object-contain"
+                autoPlay
+                playsInline
+                controls={false}
+              />
+            ) : frameUrl ? (
+              <img src={frameUrl} alt="Current scene" className="w-full h-full object-contain" />
+            ) : null}
+        </div>
         
         {audioUrl && <audio ref={audioRef} src={audioUrl} autoPlay loop />}
         
