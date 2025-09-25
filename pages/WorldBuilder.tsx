@@ -1,22 +1,50 @@
-// Fix: Changed React import to a namespace import to resolve JSX intrinsic element errors.
+// Fix: Switched to a namespace import 'import * as React' and updated hooks/types to use the `React.` prefix to resolve widespread JSX typing errors.
 import * as React from 'react';
 import {
     generateInitialImage,
+    generateNextVideo,
+    generateStereoVideo,
+    editImage,
+    generateAudioDescription,
+    generateAmbientSoundtrack,
     improvisePrompt
 } from '../services/geminiService';
 import { getSavedWorlds, saveWorld, deleteWorld } from '../utils/worldManager';
-import { SavedWorld } from '../types';
+import { CameraAction, AppMode, SavedWorld } from '../types';
+import { KEY_MAP, PRESET_MOVEMENTS } from '../constants';
 import VideoDisplay from '../components/VideoDisplay';
+import Controls from '../components/Controls';
+import PresetSelector from '../components/PresetSelector';
+import ModeToggle from '../components/ModeToggle';
+import SceneEditor from '../components/SceneEditor';
 import Loader from '../components/Loader';
 import ErrorDisplay from '../components/ErrorDisplay';
+import PromptInput from '../components/PromptInput';
 import AssetLibrary from '../components/AssetLibrary';
-import Placeholder from '../components/Placeholder';
+import StereoToggle from '../components/StereoToggle';
+import AnimationControls from '../components/AnimationControls';
+
+
+const InfoTooltip: React.FC = () => (
+  <div className="group relative flex items-center">
+    <span className="inline-block w-6 h-6 rounded-full bg-brand-primary text-white text-center font-bold cursor-pointer"
+      tabIndex={0}
+      aria-label="Show instructions"
+    >i</span>
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-brand-dark-tertiary text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+      Enter a creative prompt and click Generate to see your world come alive!
+       <div className="absolute top-full left-1/2 -translate-x-1/2 mt-[-1px] w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-brand-dark-tertiary"></div>
+    </div>
+  </div>
+);
 
 
 const WorldBuilder: React.FC = () => {
     // Input & Prompts State
     const [prompt, setPrompt] = React.useState<string>('');
     const [initialPrompt, setInitialPrompt] = React.useState<string>('');
+    const [animationPrompt, setAnimationPrompt] = React.useState<string>('');
+    const [editPrompt, setEditPrompt] = React.useState<string>('');
 
     // Loading & Error State
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -27,25 +55,33 @@ const WorldBuilder: React.FC = () => {
     // Media & Scene State
     const [currentFrame, setCurrentFrame] = React.useState<string | null>(null);
     const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
+    const [stereoVideoUrls, setStereoVideoUrls] = React.useState<{ left: string; right: string } | null>(null);
     const [audioUrl, setAudioUrl] = React.useState<string | null>(null);
     const [audioDescription, setAudioDescription] = React.useState<string | null>(null);
     const [isGeneratingAudio, setIsGeneratingAudio] = React.useState<boolean>(false);
 
+    // App Mode & Controls State
+    const [appMode, setAppMode] = React.useState<AppMode>(AppMode.CAMERA);
+    const [isStereo, setIsStereo] = React.useState<boolean>(false);
+    const [isStyleLocked, setIsStyleLocked] = React.useState<boolean>(false); // For future use
+
     // Library & Tools State
     const [savedWorlds, setSavedWorlds] = React.useState<SavedWorld[]>([]);
     const [isLibraryOpen, setIsLibraryOpen] = React.useState<boolean>(false);
-    
-    // Mock data for checkpoint history based on the screenshot
-    const [checkpoints, setCheckpoints] = React.useState(Array(12).fill(true));
 
     const isReady = !!currentFrame && !isLoading;
+    const actionQueue = React.useRef<CameraAction[]>([]).current;
     
     // Cleanup old video URLs to prevent memory leaks
     React.useEffect(() => {
         return () => {
             if (videoUrl) URL.revokeObjectURL(videoUrl);
+            if (stereoVideoUrls) {
+                URL.revokeObjectURL(stereoVideoUrls.left);
+                URL.revokeObjectURL(stereoVideoUrls.right);
+            }
         };
-    }, [videoUrl]);
+    }, [videoUrl, stereoVideoUrls]);
     
     const dismissError = () => setError(null);
 
@@ -60,6 +96,20 @@ const WorldBuilder: React.FC = () => {
         };
     }, []);
 
+    // Keyboard controls for camera movement
+    React.useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (!isReady || appMode !== AppMode.CAMERA || document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) return;
+            const action = KEY_MAP[event.key.toUpperCase()];
+            if (action) {
+                event.preventDefault();
+                handleAction(action);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isReady, appMode]);
+
     const handleGenerateInitialImage = async () => {
         if (!prompt.trim()) {
             setError("Please enter a description for your world.");
@@ -70,6 +120,7 @@ const WorldBuilder: React.FC = () => {
         setError(null);
         setCurrentFrame(null);
         setVideoUrl(null);
+        setStereoVideoUrls(null);
         setAudioUrl(null);
         setAudioDescription(null);
         try {
@@ -84,12 +135,91 @@ const WorldBuilder: React.FC = () => {
             setIsLoading(false);
         }
     };
+    
+    const handleAction = React.useCallback(async (action: CameraAction) => {
+        if (!currentFrame || isLoading) return;
+
+        setIsLoading(true);
+        setError(null);
+        if (videoUrl) URL.revokeObjectURL(videoUrl);
+        if (stereoVideoUrls) {
+            URL.revokeObjectURL(stereoVideoUrls.left);
+            URL.revokeObjectURL(stereoVideoUrls.right);
+        }
+        setVideoUrl(null);
+        setStereoVideoUrls(null);
+
+        try {
+            if (isStereo) {
+                const urls = await generateStereoVideo(currentFrame, action, animationPrompt || undefined, setLoadingMessage, isStyleLocked);
+                setStereoVideoUrls(urls);
+            } else {
+                const url = await generateNextVideo(currentFrame, action, animationPrompt || undefined, setLoadingMessage, isStyleLocked);
+                setVideoUrl(url);
+            }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'An unknown error occurred during video generation.';
+            setError(message);
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [currentFrame, isLoading, isStereo, animationPrompt, isStyleLocked, videoUrl, stereoVideoUrls]);
+
+    const processActionQueue = React.useCallback(() => {
+        if (actionQueue.length > 0) {
+            const nextAction = actionQueue.shift();
+            if (nextAction) {
+                handleAction(nextAction);
+            }
+        }
+    }, [actionQueue, handleAction]);
+    
+    const handlePresetSelect = (key: string) => {
+        if (isLoading) return;
+        const actions = PRESET_MOVEMENTS[key];
+        if (actions) {
+            actionQueue.push(...actions);
+            processActionQueue();
+        }
+    };
 
     const handleVideoEnd = React.useCallback((lastFrameDataUrl: string) => {
         setCurrentFrame(lastFrameDataUrl);
+        
         setIsLoading(false);
-    }, []);
 
+        if (actionQueue.length > 0) {
+             processActionQueue();
+        }
+    }, [actionQueue, processActionQueue]);
+
+    const handleModeChange = (mode: AppMode) => {
+        if (isReady) {
+            setAppMode(mode);
+            setEditPrompt('');
+        }
+    };
+    
+    const handleEdit = async () => {
+        if (!currentFrame || !editPrompt.trim() || isLoading) return;
+        
+        setIsLoading(true);
+        setLoadingMessage("Applying your edit...");
+        setError(null);
+        
+        try {
+            const newImage = await editImage(currentFrame, editPrompt);
+            setCurrentFrame(newImage);
+            setAppMode(AppMode.CAMERA);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'An unknown error occurred.';
+            setError(`Failed to edit image: ${message}`);
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleSaveWorld = () => {
         if (!currentFrame || !initialPrompt) return;
@@ -112,14 +242,34 @@ const WorldBuilder: React.FC = () => {
         setPrompt(world.name);
         setIsLibraryOpen(false);
         setVideoUrl(null);
+        setStereoVideoUrls(null);
         setAudioUrl(null);
         setError(null);
+        setAppMode(AppMode.CAMERA);
     };
 
     const handleDeleteWorld = (worldId: string) => {
         if (window.confirm("Are you sure you want to delete this world?")) {
             deleteWorld(worldId);
             setSavedWorlds(getSavedWorlds());
+        }
+    };
+    
+     const handleAddAmbiance = async () => {
+        if (!initialPrompt || isGeneratingAudio || isLoading) return;
+        setIsGeneratingAudio(true);
+        setError(null);
+        try {
+            const description = await generateAudioDescription(initialPrompt);
+            setAudioDescription(description);
+            const url = await generateAmbientSoundtrack(description);
+            setAudioUrl(url);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'An unknown error occurred.';
+            setError(`Failed to generate audio: ${message}`);
+            console.error(err);
+        } finally {
+            setIsGeneratingAudio(false);
         }
     };
     
@@ -138,120 +288,115 @@ const WorldBuilder: React.FC = () => {
             setIsImprovising(false);
         }
     };
-    
-    const handleAddNewPrompt = () => {
-      // For now, this just clears the prompt. In a real app, it would create a new history item.
-      setPrompt('');
-      // In a real implementation, you might want to focus the textarea.
-      // document.getElementById('prompt-textarea')?.focus();
-    };
 
-    const CheckpointList = () => (
-      <div className="flex-shrink-0 pr-2">
-        <ul className="space-y-2">
-          {checkpoints.map((_, index) => (
-            <li key={index} className="flex items-center gap-2">
-              <span className="w-5 h-5 flex items-center justify-center bg-green-500/20 rounded-full">
-                <svg className="w-3.5 h-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-              </span>
-            </li>
-          ))}
-        </ul>
-        <div className="text-xs text-slate-400 my-2 pl-1">Checkpoint</div>
-      </div>
-    );
-
-    return (
-      <div className="w-full h-full flex flex-row bg-brand-dark-secondary">
-        {isLibraryOpen && (
-            <AssetLibrary 
-                worlds={savedWorlds} 
-                onLoad={handleLoadWorld} 
-                onDelete={handleDeleteWorld} 
-                onClose={() => setIsLibraryOpen(false)}
-            />
-        )}
-
-        {/* Left Sidebar */}
-        <div className="w-80 h-full flex-shrink-0 bg-brand-dark p-3 flex flex-col gap-4 border-r border-slate-800">
-            <div className="flex-grow flex flex-row overflow-y-auto">
-                <CheckpointList />
-                <div className="flex-grow flex flex-col">
-                    <div className="text-sm text-slate-300 font-semibold mb-2 ml-1">Prompt</div>
-                    <textarea
-                        id="prompt-textarea"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="A serene, mystical forest at twilight..."
-                        disabled={isLoading}
-                        className="w-full flex-grow bg-transparent text-slate-300 text-sm p-1 focus:outline-none resize-none"
+    const renderInitialView = () => (
+        <div className="w-full h-full flex items-center justify-center p-4">
+            {isLibraryOpen && (
+                <AssetLibrary 
+                    worlds={savedWorlds} 
+                    onLoad={handleLoadWorld} 
+                    onDelete={handleDeleteWorld} 
+                    onClose={() => setIsLibraryOpen(false)}
+                />
+            )}
+            <div className="w-full max-w-lg bg-brand-dark-secondary rounded-2xl shadow-lg p-8 flex flex-col items-center animate-fadeInScaleUp">
+                <h1 className="text-3xl font-bold text-white text-center mb-2">AI World Builder</h1>
+                <p className="text-md text-slate-300 text-center mb-6">
+                    Describe your world and let AI create it for you.
+                </p>
+                <div className="w-full flex flex-row items-center justify-center gap-3">
+                    <PromptInput
+                        prompt={prompt}
+                        setPrompt={setPrompt}
+                        onGenerate={handleGenerateInitialImage}
+                        isDisabled={isLoading || isImprovising}
+                        onImprovise={handleImprovisePrompt}
+                        isImprovising={isImprovising}
                     />
-                     {isLoading && <div className="text-xs text-yellow-400 animate-pulse mt-2">Initial Loading...</div>}
+                    <InfoTooltip />
+                    <button
+                        onClick={handleGenerateInitialImage}
+                        className="px-6 py-3 bg-gradient-to-r from-brand-primary to-indigo-600 text-white font-bold rounded-lg shadow hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50"
+                        disabled={isLoading || isImprovising || !prompt.trim()}
+                    >
+                        {isLoading ? "Generating..." : "Generate"}
+                    </button>
                 </div>
-                <button
-                    onClick={handleImprovisePrompt}
-                    disabled={isLoading || isImprovising || !prompt.trim()}
-                    className="p-1.5 text-slate-400 rounded-full hover:bg-slate-700 hover:text-white disabled:hover:bg-transparent disabled:cursor-not-allowed disabled:text-slate-600 transition-colors self-start ml-2"
-                    title="Improvise Prompt"
-                >
-                    {isImprovising ? (
-                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2.5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0V4.382l-1.63 1.25a.75.75 0 01-.91-1.18l3-2.25a.75.75 0 01.79-.002zM3.404 4.87a.75.75 0 011.06 0l1.25 1.25a.75.75 0 01-1.06 1.06L3.404 5.93a.75.75 0 010-1.06zM15.13 3.404a.75.75 0 010 1.06l-1.25 1.25a.75.75 0 11-1.06-1.06l1.25-1.25a.75.75 0 011.06 0zM10 17.5a.75.75 0 01-.75-.75v-3.5a.75.75 0 011.5 0v2.618l1.63-1.25a.75.75 0 11.91 1.18l-3 2.25a.75.75 0 01-.79.002zM4.87 16.596a.75.75 0 01-1.06 0l-1.25-1.25a.75.75 0 011.06-1.06l1.25 1.25a.75.75 0 010 1.06zM16.596 15.13a.75.75 0 010-1.06l1.25-1.25a.75.75 0 111.06 1.06l-1.25 1.25a.75.75 0 01-1.06 0zM3.25 10a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5H4.882l1.25 1.63a.75.75 0 11-1.18.91l-2.25-3a.75.75 0 01.002-.79zM16.75 10a.75.75 0 01-.75.75h-3.5a.75.75 0 010-1.5h2.618l-1.25-1.63a.75.75 0 111.18-.91l2.25 3a.75.75 0 01-.002.79z" clipRule="evenodd" /></svg>
-                    )}
-                </button>
-            </div>
-            <div className="flex-shrink-0 flex items-center justify-between">
-                <button 
-                  onClick={handleAddNewPrompt}
-                  disabled={isLoading}
-                  className="p-2 text-slate-400 hover:text-white disabled:opacity-50"
-                  title="New Prompt"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                </button>
-                 <button 
-                  onClick={handleGenerateInitialImage}
-                  disabled={isLoading || !prompt.trim()}
-                  className="p-2 text-slate-400 hover:text-white disabled:opacity-50"
-                  title="Generate"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                </button>
+                {savedWorlds.length > 0 && (
+                    <button onClick={() => setIsLibraryOpen(true)} className="mt-6 text-slate-400 hover:text-white underline text-sm">
+                        Or load a saved world
+                    </button>
+                )}
             </div>
         </div>
+    );
 
-        {/* Main Content Area */}
-        <div className="flex-grow w-full h-full relative">
+    const renderWorldView = () => (
+        <div className="w-full h-full relative">
             {error && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl">
                      <ErrorDisplay message={error} onDismiss={dismissError} />
                 </div>
             )}
             
-            {currentFrame ? (
-                <VideoDisplay
-                    videoUrl={videoUrl}
-                    audioUrl={audioUrl}
-                    frameUrl={currentFrame}
-                    onVideoEnd={handleVideoEnd}
-                    isLoading={isLoading}
-                    isReady={isReady}
-                    isStereo={false} // Feature removed from this UI
-                    onSave={handleSaveWorld}
-                    onAddAmbiance={() => {}} // Feature removed from this UI
-                    isGeneratingAudio={isGeneratingAudio}
-                    audioDescription={audioDescription}
+            {isLibraryOpen && (
+                <AssetLibrary 
+                    worlds={savedWorlds} 
+                    onLoad={handleLoadWorld} 
+                    onDelete={handleDeleteWorld} 
+                    onClose={() => setIsLibraryOpen(false)}
                 />
-            ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                    {isLoading ? null : <Placeholder />}
-                </div>
             )}
+            
+            <VideoDisplay
+                videoUrl={videoUrl}
+                stereoVideoUrls={stereoVideoUrls}
+                audioUrl={audioUrl}
+                frameUrl={currentFrame}
+                onVideoEnd={handleVideoEnd}
+                isLoading={isLoading}
+                isReady={isReady}
+                isStereo={isStereo}
+                onSave={handleSaveWorld}
+                onAddAmbiance={handleAddAmbiance}
+                isGeneratingAudio={isGeneratingAudio}
+                audioDescription={audioDescription}
+            />
 
-
-            {isLoading && !currentFrame && <Loader message={loadingMessage} />}
+            {isLoading && <Loader message={loadingMessage} />}
         </div>
+    );
+
+    return (
+      <div className="w-full h-full flex flex-col bg-brand-dark-secondary">
+        <div className="flex-grow w-full relative pb-24 flex">
+             {currentFrame ? renderWorldView() : renderInitialView()}
+        </div>
+
+        {currentFrame && (
+            <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center py-3 bg-gradient-to-t from-black/50 to-transparent animate-fadeIn">
+                <div className="p-2 bg-brand-dark/40 backdrop-blur-sm rounded-full flex items-center gap-4 shadow-lg border border-slate-700/50">
+                    <ModeToggle currentMode={appMode} onModeChange={handleModeChange} isDisabled={!isReady} />
+                    <div className="w-px h-8 bg-slate-600" />
+                    {appMode === AppMode.CAMERA ? (
+                        <div className="flex items-center gap-3">
+                            <Controls onAction={handleAction} isDisabled={!isReady} />
+                            <PresetSelector presets={PRESET_MOVEMENTS} onSelect={handlePresetSelect} isDisabled={!isReady} />
+                            <AnimationControls prompt={animationPrompt} setPrompt={setAnimationPrompt} isDisabled={!isReady} />
+                            <StereoToggle isEnabled={isStereo} onToggle={setIsStereo} isDisabled={!isReady} />
+                        </div>
+                    ) : (
+                        <SceneEditor
+                            prompt={editPrompt}
+                            setPrompt={setEditPrompt}
+                            onEdit={handleEdit}
+                            onCancel={() => setAppMode(AppMode.CAMERA)}
+                            isDisabled={!isReady}
+                        />
+                    )}
+                </div>
+            </div>
+        )}
       </div>
     );
 };

@@ -1,3 +1,4 @@
+// Fix: Switched to a namespace import `import * as React from 'react'` and updated hooks/types to use the `React.` prefix. This resolves widespread JSX typing errors and issues with component property recognition.
 import * as React from 'react';
 import Header from './components/Header';
 import WorldBuilder from './pages/WorldBuilder';

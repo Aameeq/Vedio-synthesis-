@@ -1,4 +1,4 @@
-// Fix: Changed React import to a namespace import to resolve JSX intrinsic element errors.
+// Fix: Switched to a namespace import 'import * as React' and updated hooks to use the `React.` prefix to resolve widespread JSX typing errors.
 import * as React from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';

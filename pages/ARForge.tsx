@@ -1,4 +1,4 @@
-// Fix: Changed React import to a namespace import to resolve JSX intrinsic element errors.
+// Fix: Switched to a namespace import 'import * as React' and updated hooks/types to use the `React.` prefix to resolve widespread JSX typing errors.
 import * as React from 'react';
 import ModelViewer from '../components/ModelViewer';
 import ARPreview from '../components/ARPreview';
