@@ -1,24 +1,10 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Documentation
+docs/
 
-node_modules
-dist
-dist-ssr
-*.local
+Wait, that would ignore the documentation folder, but the change shows a markdown file being added to docs. Let me reconsider.
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Since only a markdown file was added and no build artifacts, dependencies, or temporary files are present in the changes, no additional ignores are needed beyond what might already exist.
+
+The KNOWLEDGE_GRAPH.md file is a documentation file that should be tracked, not ignored.
+
+(empty)
